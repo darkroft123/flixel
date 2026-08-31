@@ -503,10 +503,8 @@ class FlxTween implements IFlxDestroyable
 	public var manager:FlxTweenManager;
 
 	public var active(default, set):Bool = false;
-	public var paused(default, set):Bool = false;
 	public var duration:Float = 0;
 	public var ease:EaseFunction;
-	public var framerate:Float;
 	public var onStart:TweenCallback;
 	public var onUpdate:TweenCallback;
 	public var onComplete:TweenCallback;
@@ -564,7 +562,6 @@ class FlxTween implements IFlxDestroyable
 		onUpdate = Options.onUpdate;
 		onComplete = Options.onComplete;
 		ease = Options.ease;
-		framerate = Options.framerate != null ? Options.framerate : 0;
 		setDelays(Options.startDelay, Options.loopDelay);
 		this.manager = manager != null ? manager : globalManager;
 	}
@@ -622,23 +619,13 @@ class FlxTween implements IFlxDestroyable
 
 	function update(elapsed:Float):Void
 	{
-		var preTick:Float = _secondsSinceStart;
 		_secondsSinceStart += elapsed;
-		var postTick:Float = _secondsSinceStart;
-
 		var delay:Float = (executions > 0) ? loopDelay : startDelay;
 		if (_secondsSinceStart < delay)
 		{
 			return;
 		}
-
-		if (framerate > 0)
-		{
-			preTick = Math.fround(preTick * framerate) / framerate;
-			postTick = Math.fround(postTick * framerate) / framerate;
-		}
-
-		scale = Math.max((postTick - delay), 0) / duration;
+		scale = Math.max((_secondsSinceStart - delay), 0) / duration;
 		if (ease != null)
 		{
 			scale = ease(scale);
@@ -660,7 +647,7 @@ class FlxTween implements IFlxDestroyable
 		}
 		else
 		{
-			if (postTick > preTick && onUpdate != null)
+			if (onUpdate != null)
 				onUpdate(this);
 		}
 	}
@@ -676,11 +663,9 @@ class FlxTween implements IFlxDestroyable
 		if (duration == 0)
 		{
 			active = false;
-			paused = false;
 			return this;
 		}
 		active = true;
-		paused = false;
 		_running = false;
 		finished = false;
 		return this;
@@ -778,8 +763,6 @@ class FlxTween implements IFlxDestroyable
 	function setVarsOnEnd():Void
 	{
 		active = false;
-		paused = false;
-
 		_running = false;
 		finished = true;
 	}
@@ -798,7 +781,7 @@ class FlxTween implements IFlxDestroyable
 
 	function doNextTween(tween:FlxTween):Void
 	{
-		if (!tween.active && !tween.paused)
+		if (!tween.active)
 		{
 			tween.start();
 			manager.add(tween);
@@ -920,12 +903,6 @@ class FlxTween implements IFlxDestroyable
 
 		return active;
 	}
-
-	function set_paused(paused:Bool):Bool
-	{
-		this.paused = paused;
-		return paused;
-	}
 }
 
 typedef TweenCallback = FlxTween->Void;
@@ -941,12 +918,6 @@ typedef TweenOptions =
 	 * Optional easer function (see `FlxEase`).
 	 */
 	@:optional var ease:EaseFunction;
-
-	/**
-	 * Optional set framerate for this tween to update at.
-	 * This also affects how often `onUpdate` is called.
-	 */
-	@:optional var framerate:Null<Float>;
 
 	/**
 	 * Optional start callback function.
@@ -1334,7 +1305,7 @@ class FlxTweenManager extends FlxBasic
 
 		for (tween in _tweens)
 		{
-			if (!tween.active || tween.paused)
+			if (!tween.active)
 				continue;
 
 			tween.update(elapsed);
@@ -1460,7 +1431,7 @@ class FlxTweenManager extends FlxBasic
 		forEachTweensOf(Object, FieldPaths,
 			function (tween)
 			{
-				if ((tween.type & FlxTweenType.LOOPING) == 0 && (tween.type & FlxTweenType.PINGPONG) == 0 && tween.active && !tween.paused)
+				if ((tween.type & FlxTweenType.LOOPING) == 0 && (tween.type & FlxTweenType.PINGPONG) == 0 && tween.active)
 					tween.update(FlxMath.MAX_VALUE_FLOAT);
 			}
 		);
@@ -1557,7 +1528,7 @@ class FlxTweenManager extends FlxBasic
 	public function completeAll():Void
 	{
 		for (tween in _tweens)
-			if ((tween.type & FlxTweenType.LOOPING) == 0 && (tween.type & FlxTweenType.PINGPONG) == 0 && tween.active && !tween.paused)
+			if ((tween.type & FlxTweenType.LOOPING) == 0 && (tween.type & FlxTweenType.PINGPONG) == 0 && tween.active)
 				tween.update(FlxMath.MAX_VALUE_FLOAT);
 	}
 

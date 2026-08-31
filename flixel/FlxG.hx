@@ -46,9 +46,6 @@ import flixel.input.android.FlxAndroidKeys;
 #if FLX_ACCELEROMETER
 import flixel.input.FlxAccelerometer;
 #end
-#if FLX_GYROSCOPE
-import flixel.input.FlxGyroscope;
-#end
 #if FLX_POINTER_INPUT
 import flixel.input.FlxSwipe;
 #end
@@ -103,9 +100,7 @@ class FlxG
 	 * The HaxeFlixel version, in semantic versioning syntax. Use `Std.string()`
 	 * on it to get a `String` formatted like this: `"HaxeFlixel MAJOR.MINOR.PATCH-COMMIT_SHA"`.
 	 */
-	#if !macro
-	public static final VERSION:FlxVersion = new flixel.system.FlxAutoVersion<"flixel">();
-	#end
+	public static var VERSION(default, null):FlxVersion = new FlxVersion(6, 0, 0);
 
 	/**
 	 * Internal tracker for game object.
@@ -150,16 +145,6 @@ class FlxG
 
 	public static var renderBlit(default, null):Bool;
 	public static var renderTile(default, null):Bool;
-
-	/**
-	 * Whether or not antialiasing is allowed.
-	 * 
-	 * If this is disabled, sprites or cameras will not have
-	 * any antialiasing, regardless of their individual antialiasing values.
-	 * 
-	 * This could come in handy for an antialiasing option in your game!
-	 */
-	public static var allowAntialiasing:Bool = true;
 
 	/**
 	 * Represents the amount of time in seconds that passed since last frame.
@@ -269,13 +254,6 @@ class FlxG
 	 * Provides access to the accelerometer data of mobile devices as `x`/`y`/`z` values.
 	 */
 	public static var accelerometer(default, null):FlxAccelerometer;
-	#end
-
-	#if FLX_GYROSCOPE
-	/**
-	 * Provides access to the accelerometer data of mobile devices as `pitch`/`roll`/`yaw` values.
-	 */
-	public static var gyroscope(default, null):FlxGyroscope;
 	#end
 
 	#if js
@@ -561,10 +539,6 @@ class FlxG
 		FlxG.height = height;
 
 		initRenderMethod();
-		#if FLX_OPENGL_AVAILABLE
-		// Query once when window is created and cache for later
-		bitmap.get_maxTextureSize();
-		#end
 
 		FlxG.initialWidth = width;
 		FlxG.initialHeight = height;
@@ -594,10 +568,6 @@ class FlxG
 
 		#if FLX_ACCELEROMETER
 		accelerometer = new FlxAccelerometer();
-		#end
-
-		#if FLX_GYROSCOPE
-		gyroscope = new FlxGyroscope();
 		#end
 
 		#if FLX_SAVE

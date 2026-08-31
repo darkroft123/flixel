@@ -1,5 +1,6 @@
 package flixel.ui;
 
+import openfl.events.MouseEvent;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.graphics.atlas.FlxAtlas;
@@ -13,7 +14,6 @@ import flixel.math.FlxPoint;
 import flixel.sound.FlxSound;
 import flixel.text.FlxText;
 import flixel.util.FlxDestroyUtil;
-import openfl.events.MouseEvent;
 #if FLX_TOUCH
 import flixel.input.touch.FlxTouch;
 #end
@@ -270,7 +270,7 @@ class FlxTypedButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 		status = NORMAL;
 
 		// Since this is a UI element, the default scrollFactor is (0, 0)
-		scrollFactor.zero();
+		scrollFactor.set();
 
 		#if FLX_MOUSE
 		FlxG.stage.addEventListener(MouseEvent.MOUSE_UP, onUpEventListener);

@@ -43,7 +43,7 @@ class Tool extends Sprite implements IFlxDestroyable
 		return _brain.activeTool == this && _brain.visible;
 	}
 
-	function setButton(icon:FlxGraphicAsset):Void
+	function setButton(icon:FlxGraphicSource):Void
 	{
 		button = new FlxSystemButton(icon.resolveBitmapData(), onButtonClicked, true);
 		button.toggled = true;

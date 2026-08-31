@@ -1,5 +1,11 @@
 package flixel.system;
 
+import openfl.display.Graphics;
+import openfl.display.Sprite;
+import openfl.Lib;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
 import flixel.FlxG;
 import flixel.FlxState;
 import flixel.tweens.FlxEase;
@@ -7,12 +13,6 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
 import flixel.util.typeLimit.NextState;
-import openfl.Lib;
-import openfl.display.Graphics;
-import openfl.display.Sprite;
-import openfl.text.TextField;
-import openfl.text.TextFormat;
-import openfl.text.TextFormatAlign;
 
 class FlxSplash extends FlxState
 {
@@ -87,7 +87,7 @@ class FlxSplash extends FlxState
 		#if FLX_SOUND_SYSTEM
 		if (!muted)
 		{
-			FlxG.sound.create("flixel/sounds/flixel").play();
+			FlxG.sound.load(FlxAssets.getSoundAddExtension("flixel/sounds/flixel")).play();
 		}
 		#end
 	}

@@ -1408,7 +1408,6 @@ class FlxInputText extends FlxText implements IFlxInputText
 					{
 						box = _selectionBoxes[i] = new FlxSprite();
 						box.color = selectionColor;
-						box.alpha = selectionColor.alphaFloat;
 					}
 
 					var boxRect = FlxRect.get(startBoundaries.x - scrollH, startBoundaries.y - scrollVOffset,
@@ -2138,10 +2137,7 @@ class FlxInputText extends FlxText implements IFlxInputText
 			for (box in _selectionBoxes)
 			{
 				if (box != null)
-				{
 					box.color = selectionColor;
-					box.alpha = selectionColor.alphaFloat;
-				}
 			}
 		}
 		

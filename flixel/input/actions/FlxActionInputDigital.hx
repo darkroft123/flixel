@@ -297,7 +297,6 @@ class FlxActionInputDigitalSteam extends FlxActionInputDigital
 
 	inline function getSteamControllerData(controllerHandle:Int):Bool
 	{
-		#if FLX_STEAMWRAP
 		if (controllerHandle == FlxInputDeviceID.FIRST_ACTIVE)
 		{
 			controllerHandle = FlxSteamController.getFirstActiveHandle();
@@ -306,9 +305,6 @@ class FlxActionInputDigitalSteam extends FlxActionInputDigital
 		var data = FlxSteamController.getDigitalActionData(controllerHandle, inputID);
 
 		return (data.bActive && data.bState);
-		#else
-		return false;
-		#end
 	}
 }
 

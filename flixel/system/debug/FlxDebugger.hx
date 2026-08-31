@@ -3,25 +3,25 @@ package flixel.system.debug;
 import openfl.display.BitmapData;
 import openfl.display.Sprite;
 #if FLX_DEBUG
-import flixel.FlxG;
-import flixel.system.FlxAssets;
-import flixel.system.debug.completion.CompletionList;
-import flixel.system.debug.console.Console;
-import flixel.system.debug.interaction.Interaction;
-import flixel.system.debug.log.BitmapLog;
-import flixel.system.debug.log.Log;
-import flixel.system.debug.stats.Stats;
-import flixel.system.debug.watch.Tracker;
-import flixel.system.debug.watch.Watch;
-import flixel.system.ui.FlxSystemButton;
-import flixel.util.FlxHorizontalAlign;
-import openfl.display.DisplayObject;
 import openfl.events.MouseEvent;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
+import openfl.display.DisplayObject;
+import flixel.FlxG;
+import flixel.system.debug.console.Console;
+import flixel.system.debug.log.Log;
+import flixel.system.debug.stats.Stats;
+import flixel.system.debug.watch.Watch;
+import flixel.system.debug.watch.Tracker;
+import flixel.system.debug.completion.CompletionList;
+import flixel.system.debug.log.BitmapLog;
+import flixel.system.debug.interaction.Interaction;
+import flixel.system.FlxAssets;
+import flixel.system.ui.FlxSystemButton;
+import flixel.util.FlxHorizontalAlign;
 
 using flixel.util.FlxArrayUtil;
 #end
@@ -33,20 +33,6 @@ using flixel.util.FlxArrayUtil;
 class FlxDebugger extends openfl.display.Sprite
 {
 	#if FLX_DEBUG
-	
-	
-	/**
-	 * The scale of the debug windows must be set before the `FlxGame` is made.
-	 * Can also use the compile flag `-DFLX_DEBUGGER_SCALE=2`
-	 */
-	public static var defaultScale:Int
-	#if FLX_DEBUGGER_SCALE
-	= Std.parseInt('${haxe.macro.Compiler.getDefine("FLX_DEBUGGER_SCALE")}');
-	#else
-	= 1;
-	#end
-	
-	
 	/**
 	 * Internal, used to space out windows from the edges.
 	 */
@@ -64,7 +50,6 @@ class FlxDebugger extends openfl.display.Sprite
 	public var vcr:VCR;
 	public var console:Console;
 	public var interaction:Interaction;
-	public var scale:Int;
 
 	var completionList:CompletionList;
 
@@ -99,18 +84,13 @@ class FlxDebugger extends openfl.display.Sprite
 	/**
 	 * Instantiates the debugger overlay.
 	 *
-	 * @param   width   The width of the screen.
-	 * @param   height  The height of the screen.
-	 * @param   scale   The scale of the debugger relative to the stage size
+	 * @param   Width    The width of the screen.
+	 * @param   Height   The height of the screen.
 	 */
 	@:allow(flixel.FlxGame)
-	function new(width:Float, height:Float, scale = 0)
+	function new(Width:Float, Height:Float)
 	{
 		super();
-		if (scale == 0)
-			scale = defaultScale;
-		scaleX = scale;
-		scaleY = scale;
 
 		visible = false;
 		tabChildren = false;
@@ -119,7 +99,7 @@ class FlxDebugger extends openfl.display.Sprite
 
 		_topBar = new Sprite();
 		_topBar.graphics.beginFill(0x000000, 0xAA / 255);
-		_topBar.graphics.drawRect(0, 0, FlxG.stage.stageWidth / scaleX, TOP_HEIGHT);
+		_topBar.graphics.drawRect(0, 0, FlxG.stage.stageWidth, TOP_HEIGHT);
 		_topBar.graphics.endFill();
 		addChild(_topBar);
 
@@ -168,7 +148,7 @@ class FlxDebugger extends openfl.display.Sprite
 
 		addChild(completionList);
 
-		onResize(width, height);
+		onResize(Width, Height);
 
 		addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
 		addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
@@ -264,9 +244,8 @@ class FlxDebugger extends openfl.display.Sprite
 				console.reposition(GUTTER, _screen.y);
 				log.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 2);
 				log.reposition(0, _screen.y - log.height - console.height - GUTTER * 1.5);
-				final heightWatch = _screen.y * 0.5;
-				watch.resize((_screen.x - GUTTER * 3) / 2, heightWatch);
-				watch.reposition(_screen.x, _screen.y - heightWatch - console.height - (GUTTER + 1.75) * 1.5);
+				watch.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 2);
+				watch.reposition(_screen.x, _screen.y - watch.height - console.height - GUTTER * 1.5);
 				stats.reposition(_screen.x, 0);
 				bitmapLog.resize((_screen.x - GUTTER * 3) / 2, _screen.y - (GUTTER * 2) - (_screen.y / 2) - (35 * 2));
 				bitmapLog.reposition(0, GUTTER * 1.5);
@@ -305,28 +284,24 @@ class FlxDebugger extends openfl.display.Sprite
 				console.reposition(GUTTER, _screen.y);
 				log.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
 				log.reposition(0, _screen.y - log.height - console.height - GUTTER * 1.5);
-				final heightWatch = _screen.y * 0.25;
-				watch.resize((_screen.x - GUTTER * 3) / 2, heightWatch);
-				watch.reposition(_screen.x, _screen.y - heightWatch - console.height - (GUTTER + 1.75) * 1.5);
+				watch.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
+				watch.reposition(_screen.x, _screen.y - watch.height - console.height - GUTTER * 1.5);
 				stats.reposition(_screen.x, 0);
 				bitmapLog.resize((_screen.x - GUTTER * 3) / 2, _screen.y / 4);
 				bitmapLog.reposition(0, log.y - GUTTER - bitmapLog.height);
 		}
 	}
 
-	public function onResize(width:Float, height:Float, scale = 0):Void
+	public function onResize(Width:Float, Height:Float):Void
 	{
-		if (scale == 0)
-			scale = defaultScale;
-		this.scale = scale;
-		_screen.x = width / scale;
-		_screen.y = height / scale;
+		_screen.x = Width;
+		_screen.y = Height;
 
 		updateBounds();
-		_topBar.width = FlxG.stage.stageWidth / scaleX;
+		_topBar.width = FlxG.stage.stageWidth;
 		resetButtonLayout();
 		resetLayout();
-		scaleX = scaleY = scale;
+		scaleX = scaleY = 1;
 		x = -FlxG.scaleMode.offset.x;
 		y = -FlxG.scaleMode.offset.y;
 	}
@@ -367,10 +342,10 @@ class FlxDebugger extends openfl.display.Sprite
 	{
 		hAlignButtons(_buttons[FlxHorizontalAlign.LEFT], 10, true, 10);
 
-		var offset = FlxG.stage.stageWidth / scaleX * 0.5 - hAlignButtons(_buttons[FlxHorizontalAlign.CENTER], 10, false) * 0.5;
+		var offset = FlxG.stage.stageWidth * 0.5 - hAlignButtons(_buttons[FlxHorizontalAlign.CENTER], 10, false) * 0.5;
 		hAlignButtons(_buttons[FlxHorizontalAlign.CENTER], 10, true, offset);
 
-		var offset = FlxG.stage.stageWidth / scaleX - hAlignButtons(_buttons[FlxHorizontalAlign.RIGHT], 10, false);
+		var offset = FlxG.stage.stageWidth - hAlignButtons(_buttons[FlxHorizontalAlign.RIGHT], 10, false);
 		hAlignButtons(_buttons[FlxHorizontalAlign.RIGHT], 10, true, offset);
 	}
 
@@ -417,7 +392,7 @@ class FlxDebugger extends openfl.display.Sprite
 			resetButtonLayout();
 	}
 
-	public function addWindowToggleButton(window:Window, icon:FlxGraphicAsset):Void
+	public function addWindowToggleButton(window:Window, icon:FlxGraphicSource):Void
 	{
 		var button = addButton(RIGHT, icon.resolveBitmapData(), window.toggleVisible, true, true);
 		window.toggleButton = button;
@@ -508,9 +483,9 @@ class FlxDebugger extends openfl.display.Sprite
 	inline function openGitHub():Void
 	{
 		var url = "https://github.com/HaxeFlixel/flixel";
-		if (FlxG.VERSION.sha != "")
+		if (FlxVersion.sha != "")
 		{
-			url += '/commit/${FlxG.VERSION.sha}';
+			url += '/commit/${FlxVersion.sha}';
 		}
 		FlxG.openURL(url);
 	}

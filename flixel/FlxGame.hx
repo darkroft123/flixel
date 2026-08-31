@@ -223,11 +223,11 @@ class FlxGame extends Sprite
 	 * Instantiate a new game object.
 	 *
 	 * @param gameWidth        The width of your game in pixels. If `0`, the `Project.xml` width is used.
-	 *                         If the demensions don't match the `Project.xml`,
+	 *                         If the demensions don't match the `Project.xml`, 
 	 *                         [`scaleMode`](https://api.haxeflixel.com/flixel/system/scaleModes/index.html)
 	 *                         will determine the actual display size of the game.
 	 * @param gameHeight       The height of your game in pixels. If `0`, the `Project.xml` height is used.
-	 *                         If the demensions don't match the `Project.xml`,
+	 *                         If the demensions don't match the `Project.xml`, 
 	 *                         [`scaleMode`](https://api.haxeflixel.com/flixel/system/scaleModes/index.html)
 	 *                         will determine the actual display size of the game.
 	 * @param initialState     A constructor for the initial state, ex: `PlayState.new` or `()->new PlayState()`.
@@ -370,9 +370,7 @@ class FlxGame extends Sprite
 
 		_lostFocus = false;
 		FlxG.signals.focusGained.dispatch();
-
-		if(_state != null)
-			_state.onFocus();
+		_state.onFocus();
 
 		if (!FlxG.autoPause)
 			return;
@@ -402,9 +400,7 @@ class FlxGame extends Sprite
 
 		_lostFocus = true;
 		FlxG.signals.focusLost.dispatch();
-
-		if(_state != null)
-			_state.onFocusLost();
+		_state.onFocusLost();
 
 		if (!FlxG.autoPause)
 			return;
@@ -438,8 +434,7 @@ class FlxGame extends Sprite
 	{
 		FlxG.resizeGame(width, height);
 
-		if (_state != null)
-			_state.onResize(width, height);
+		_state.onResize(width, height);
 
 		FlxG.cameras.resize();
 		FlxG.signals.gameResized.dispatch(width, height);
@@ -513,7 +508,7 @@ class FlxGame extends Sprite
 				step();
 			}
 
-			#if FLX_TRACK_PERFORMANCE
+			#if FLX_DEBUG
 			FlxBasic.visibleCount = 0;
 			#end
 
@@ -537,7 +532,7 @@ class FlxGame extends Sprite
 		#if FLX_DEBUG
 		_skipSplash = true;
 		#end
-
+		
 		if (_skipSplash)
 		{
 			_nextState = _initialState;
@@ -552,13 +547,6 @@ class FlxGame extends Sprite
 		FlxG.reset();
 
 		FlxG.signals.postGameReset.dispatch();
-	}
-
-	function getNextState():FlxState
-	{
-		final state:FlxState = _nextState.createInstance();
-		state._constructor = _nextState.getConstructor();
-		return state;
 	}
 
 	/**
@@ -586,11 +574,11 @@ class FlxGame extends Sprite
 			_state.destroy();
 
 		// we need to clear bitmap cache only after previous state is destroyed, which will reset useCount for FlxGraphic objects
-		if(FlxG.bitmap.autoClearCache)
-			FlxG.bitmap.clearCache();
+		FlxG.bitmap.clearCache();
 
 		// Finally assign and create the new state
-		_state = getNextState();
+		_state = _nextState.createInstance();
+		_state._constructor = _nextState.getConstructor();
 		_nextState = null;
 
 		if (_gameJustStarted)
@@ -598,8 +586,7 @@ class FlxGame extends Sprite
 
 		FlxG.signals.preStateCreate.dispatch(_state);
 
-		if (_state != null)
-			_state.create();
+		_state.create();
 
 		if (_gameJustStarted)
 			gameStart();
@@ -608,12 +595,9 @@ class FlxGame extends Sprite
 		debugger.console.registerObject("state", _state);
 		#end
 
-		if (_state != null)
-			_state.createPost();
-
 		FlxG.signals.postStateSwitch.dispatch();
 	}
-
+	
 	function gameStart()
 	{
 		FlxG.signals.postGameStart.dispatch();
@@ -637,7 +621,7 @@ class FlxGame extends Sprite
 
 		handleReplayRequests();
 
-		#if FLX_TRACK_PERFORMANCE
+		#if FLX_DEBUG
 		// Finally actually step through the game physics
 		FlxBasic.activeCount = 0;
 		#end
@@ -685,6 +669,9 @@ class FlxGame extends Sprite
 	 */
 	function update():Void
 	{
+		if (!_state.active || !_state.exists)
+			return;
+
 		if (_nextState != null)
 			switchState();
 
@@ -694,17 +681,17 @@ class FlxGame extends Sprite
 		#end
 
 		updateElapsed();
-		updateInput();
 
 		FlxG.signals.preUpdate.dispatch();
+
+		updateInput();
 
 		#if FLX_SOUND_SYSTEM
 		FlxG.sound.update(FlxG.elapsed);
 		#end
 		FlxG.plugins.update(FlxG.elapsed);
 
-		if (_state != null && (_state.active && _state.exists))
-			_state.tryUpdate(FlxG.elapsed);
+		_state.tryUpdate(FlxG.elapsed);
 
 		FlxG.cameras.update(FlxG.elapsed);
 		FlxG.signals.postUpdate.dispatch();
@@ -730,11 +717,11 @@ class FlxGame extends Sprite
 	{
 		if (FlxG.fixedTimestep)
 		{
-			FlxG.elapsed = Math.max(FlxG.timeScale * _stepSeconds, 0); // fixed timestep
+			FlxG.elapsed = FlxG.timeScale * _stepSeconds; // fixed timestep
 		}
 		else
 		{
-			FlxG.elapsed = Math.max(FlxG.timeScale * (_elapsedMS / 1000), 0); // variable timestep
+			FlxG.elapsed = FlxG.timeScale * (_elapsedMS / 1000); // variable timestep
 
 			var max = FlxG.maxElapsed * FlxG.timeScale;
 			if (FlxG.elapsed > max)
@@ -807,6 +794,9 @@ class FlxGame extends Sprite
 	 */
 	function draw():Void
 	{
+		if (!_state.visible || !_state.exists)
+			return;
+
 		#if FLX_DEBUG
 		if (FlxG.debugger.visible)
 			ticks = getTicks();
@@ -821,17 +811,13 @@ class FlxGame extends Sprite
 
 		if (FlxG.plugins.drawOnTop)
 		{
-			if (_state != null && (_state.active && _state.exists))
-				_state.draw();
-
+			_state.draw();
 			FlxG.plugins.draw();
 		}
 		else
 		{
 			FlxG.plugins.draw();
-
-			if (_state != null && (_state.active && _state.exists))
-				_state.draw();
+			_state.draw();
 		}
 
 		if (FlxG.renderTile)
@@ -860,7 +846,7 @@ class FlxGame extends Sprite
 	dynamic function getTimer():Float
 	{
 		// expensive, only call if necessary
-		return System.getTimer();
+		return System.getTimerPrecise();
 	}
 }
 

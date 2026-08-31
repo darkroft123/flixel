@@ -4,7 +4,6 @@ import haxe.io.Path;
 import haxe.macro.Compiler;
 import haxe.macro.Context;
 import haxe.macro.Expr.Position;
-
 using StringTools;
 #if (flixel_addons >= "3.2.2")
 import flixel.addons.system.macros.FlxAddonDefines;
@@ -12,7 +11,7 @@ import flixel.addons.system.macros.FlxAddonDefines;
 
 
 
-private enum UserDefine
+private enum UserDefines
 {
 	FLX_NO_MOUSE_ADVANCED;
 	FLX_NO_GAMEPAD;
@@ -26,8 +25,6 @@ private enum UserDefine
 	FLX_NO_DEBUG;
 	/* Removes FlxObject.health */
 	FLX_NO_HEALTH;
-	/* Enables FlxObject.health */
-	FLX_HEALTH;
 	FLX_RECORD;
 	/* Defined in HaxeFlixel CI tests, do not use */
 	FLX_UNIT_TEST;
@@ -48,10 +45,6 @@ private enum UserDefine
 	/** Adds `creationInfo` to FlxGraphic instances, automatically defined with FLX_DEBUG */
 	FLX_TRACK_GRAPHICS;
 	/**
-	 * Adds `activeCount` and `visibleCount` to FlxBasic, for tracking update and draw calls
-	 */
-	FLX_TRACK_PERFORMANCE;
-	/**
 	 * Loads from the specified relative or absolute directory. Unlike other boolean flags,
 	 * this flag should contain a string value.
 	 * 
@@ -61,7 +54,6 @@ private enum UserDefine
 	FLX_CUSTOM_ASSETS_DIRECTORY;
 
 	FLX_CUSTOM_RUNTIME_ASSETS_DIRECTORY;
-	FLX_NO_VALIDATE_CUSTOM_ASSETS_DIRECTORY;
 
 	/**
 	 * Allows you to use sound paths with no extension, and the default sound type for that
@@ -69,29 +61,6 @@ private enum UserDefine
 	 * If this flag is set to any string, that is used for the file extension
 	 */
 	FLX_DEFAULT_SOUND_EXT;
-	
-	/**
-	 * Used to make the debug windows bigger
-	 */
-	FLX_DEBUGGER_SCALE;
-
-	/**
-	 * Determines which `FlxG.log` calls will throw an exception. Use values `ERROR`, `WARNING`,
-	 * `NOTICE`, `NORMAL` or `NONE`. If undefined, `NONE` is used.
-	 */
-	FLX_LOG_THROW;
-	
-	/**
-	 * Determines which `FlxG.log` calls will play a sound. Use values `ERROR`, `WARNING`,
-	 * `NOTICE`, `NORMAL` or `NONE`. If undefined, `WARNING` is used.
-	 */
-	FLX_LOG_PLAY_SOUND;
-	
-	/**
-	 * Determines which `FlxG.log` calls will show the debugger. Use values `ERROR`, `WARNING`,
-	 * `NOTICE`, `NORMAL` or `NONE`. Ignored if `FLX_NO_DEBUG` is defined. If undefined, `NOTICE` is used.
-	 */
-	FLX_LOG_OPEN_CONSOLE;
 }
 
 /**
@@ -99,7 +68,7 @@ private enum UserDefine
  * are shortened into a single define to avoid the redundancy
  * that comes with using them frequently.
  */
-private enum HelperDefine
+private enum HelperDefines
 {
 	FLX_GAMEPAD;
 	FLX_MOUSE;
@@ -117,7 +86,6 @@ private enum HelperDefine
 	FLX_JOYSTICK_API;
 	FLX_GAMEINPUT_API;
 	FLX_ACCELEROMETER;
-	FLX_GYROSCOPE;
 	FLX_DRAW_QUADS;
 	FLX_POINT_POOL;
 	FLX_PITCH;
@@ -132,21 +100,15 @@ private enum HelperDefine
 	/* Used in HaxeFlixel CI, should have no effect on personal projects */
 	FLX_NO_CI;
 	FLX_SAVE;
-	/** Neither FLX_HEALTH not FLX_NO_HEALTH was defined */
-	FLX_HEALTH_NOT_DEFINED;
+	FLX_HEALTH;
 	FLX_NO_TRACK_POOLS;
 	FLX_NO_TRACK_GRAPHICS;
-	FLX_NO_TRACK_PERFORMANCE;
 	FLX_OPENGL_AVAILABLE;
 	/** Defined to `1`(or `true`) if `FLX_CUSTOM_ASSETS_DIRECTORY` is not defined */
 	FLX_STANDARD_ASSETS_DIRECTORY;
 	/** The normalized, absolute path of `FLX_CUSTOM_ASSETS_DIRECTORY`, used internally */
 	FLX_CUSTOM_ASSETS_DIRECTORY_ABS;
-	/** Whether or not to validate the contents of `FLX_CUSTOM_ASSETS_DIRECTORY` on runtime */
-	FLX_VALIDATE_CUSTOM_ASSETS_DIRECTORY;
 	FLX_NO_DEFAULT_SOUND_EXT;
-	/** Enables audio streaming related APIs */
-	FLX_STREAM_SOUND;
 }
 
 class FlxDefines
@@ -161,7 +123,7 @@ class FlxDefines
 		#end
 		
 		defineInversions();
-		defineHelperDefine();
+		defineHelperDefines();
 		
 		#if (flixel_addons >= "3.2.2")
 		flixel.addons.system.macros.FlxAddonDefines.run();
@@ -207,7 +169,7 @@ class FlxDefines
 
 	static function checkDefines()
 	{
-		for (define in HelperDefine.getConstructors())
+		for (define in HelperDefines.getConstructors())
 			abortIfDefined(define);
 
 		for (define in Context.getDefines().keys())
@@ -219,7 +181,7 @@ class FlxDefines
 		}
 	}
 	
-	static var userDefinable = UserDefine.getConstructors();
+	static var userDefinable = UserDefines.getConstructors();
 	static function isValidUserDefine(define:String)
 	{
 		return (define.startsWith("FLX_") && userDefinable.indexOf(define) == -1)
@@ -245,18 +207,13 @@ class FlxDefines
 		defineInversion(FLX_UNIT_TEST, FLX_NO_UNIT_TEST);
 		defineInversion(FLX_COVERAGE_TEST, FLX_NO_COVERAGE_TEST);
 		defineInversion(FLX_SWF_VERSION_TEST, FLX_NO_SWF_VERSION_TEST);
+		defineInversion(FLX_NO_HEALTH, FLX_HEALTH);
 		defineInversion(FLX_TRACK_POOLS, FLX_NO_TRACK_POOLS);
 		defineInversion(FLX_DEFAULT_SOUND_EXT, FLX_NO_DEFAULT_SOUND_EXT);
 		// defineInversion(FLX_TRACK_GRAPHICS, FLX_NO_TRACK_GRAPHICS); // special case
-		// defineInversion(FLX_NO_HEALTH, FLX_HEALTH);
-		if (!defined(FLX_NO_HEALTH) && !defined(FLX_HEALTH))
-		{
-			define(FLX_HEALTH_NOT_DEFINED);
-			define(FLX_HEALTH);
-		}
 	}
 
-	static function defineHelperDefine()
+	static function defineHelperDefines()
 	{
 		if (defined(FLX_UNIT_TEST) || defined(FLX_COVERAGE_TEST) || defined(FLX_SWF_VERSION_TEST))
 			define(FLX_CI);
@@ -280,9 +237,6 @@ class FlxDefines
 		
 		if (!defined(FLX_NO_SAVE))
 			define(FLX_SAVE);
-
-		if (!defined(FLX_NO_VALIDATE_CUSTOM_ASSETS_DIRECTORY))
-			define(FLX_VALIDATE_CUSTOM_ASSETS_DIRECTORY);
 		
 		if (!defined("flash") || defined("flash11_8"))
 			define(FLX_GAMEINPUT_API);
@@ -302,9 +256,6 @@ class FlxDefines
 		if (defined("mobile") || defined("js"))
 			define(FLX_ACCELEROMETER);
 
-		if (defined("mobile") || defined("js"))
-			define(FLX_GYROSCOPE);
-
 		// #if (openfl >= "8.0.0")
 		// should always be defined as of 5.5.1 and, therefore, deprecated
 		define(FLX_DRAW_QUADS);
@@ -313,10 +264,8 @@ class FlxDefines
 		if (defined(FLX_TRACK_POOLS) && !defined("debug"))
 			abort("Can only define FLX_TRACK_POOLS on debug mode", (macro null).pos);
 		
-		if (defined(FLX_DEBUG)) {
+		if (defined(FLX_DEBUG))
 			define(FLX_TRACK_GRAPHICS);
-			define(FLX_TRACK_PERFORMANCE);
-		}
 
 		#if (lime_opengl || lime_opengles || lime_webgl)
 		// FlxG.stage.window.context.attributes.hardware is not always defined during unit tests
@@ -325,7 +274,6 @@ class FlxDefines
 		#end
 		
 		defineInversion(FLX_TRACK_GRAPHICS, FLX_NO_TRACK_GRAPHICS);
-		defineInversion(FLX_TRACK_PERFORMANCE, FLX_NO_TRACK_PERFORMANCE);
 		
 		if (defined(FLX_CUSTOM_ASSETS_DIRECTORY))
 		{
@@ -354,39 +302,13 @@ class FlxDefines
 					final directory = Path.normalize(rawDirectory);
 					define(FLX_CUSTOM_ASSETS_DIRECTORY_ABS, directory);
 				}
-			}
+		}
 		}
 		else // define boolean inversion
 			define(FLX_STANDARD_ASSETS_DIRECTORY);
-
-		#if lime_vorbis
-		define(FLX_STREAM_SOUND);
-		#end
-		
-		validateLogLevel(FLX_LOG_THROW);
-		validateLogLevel(FLX_LOG_PLAY_SOUND);
-		validateLogLevel(FLX_LOG_OPEN_CONSOLE);
 	}
 
-	static function validateLogLevel(userDefine:UserDefine)
-	{
-		if (defined(userDefine))
-		{
-			switch definedValue(userDefine).toUpperCase()
-			{
-				case "NORMAL"
-					| "NOTICE"
-					| "WARNING"
-					| "ERROR"
-					| "NONE":
-				
-				case unexpected:
-					abort('$userDefine must be: "NORMAL", "NOTICE", "WARNING", "ERROR" or "NONE", got "$unexpected"', (macro null).pos);
-			}
-		}
-	}
-
-	static function defineInversion(userDefine:UserDefine, invertedDefine:HelperDefine)
+	static function defineInversion(userDefine:UserDefines, invertedDefine:HelperDefines)
 	{
 		if (!defined(userDefine))
 			define(invertedDefine);
@@ -402,7 +324,7 @@ class FlxDefines
 		swfVersionError("Gamepad input is", "11.8", FLX_NO_GAMEPAD);
 	}
 
-	static function swfVersionError(feature:String, version:String, define:UserDefine)
+	static function swfVersionError(feature:String, version:String, define:UserDefines)
 	{
 		var errorMessage = '$feature only supported in Flash Player version $version or higher. '
 			+ 'Define ${define.getName()} to disable this feature or add <set name="SWF_VERSION" value="$version" /> to your Project.xml.';
