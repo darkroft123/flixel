@@ -1,1 +1,296 @@
-﻿package flixel.system.frontEnds;import flixel.graphics.FlxGraphic;import flixel.graphics.frames.FlxFrame;import flixel.math.FlxPoint;import flixel.math.FlxRect;import flixel.system.FlxAssets;import flixel.util.FlxColor;import openfl.Assets;import openfl.display.BitmapData;#if FLX_OPENGL_AVAILABLEimport lime.graphics.opengl.GL;#end/** * BitmapFrontEnd con Reverse Lookup O(1) para Dark's Collection. * Sobreescribe el BitmapFrontEnd estandar de Flixel. * * findKeyForBitmap() pasa de O(n) a O(1) usando un Map invertido. */class BitmapFrontEnd{	#if FLX_OPENGL_AVAILABLE	public var maxTextureSize(get, never):Int;	#end	public var whitePixel(get, never):FlxFrame;	@:allow(flixel.system.frontEnds.BitmapLogFrontEnd)	var _cache:Map<String, FlxGraphic>;	// REVERSE LOOKUP: BitmapData -> key, para busqueda O(1)	var _reverseCache:Map<BitmapData, String>;	var _whitePixel:FlxFrame;	var _lastUniqueKeyIndex:Int = 0;	public function new()	{		reset();	}	public function onAssetsReload(_):Void	{		for (key in _cache.keys())		{			var obj = _cache.get(key);			if (obj != null && obj.canBeRefreshed)			{				obj.onAssetsReload();			}		}	}	public inline function checkCache(key:String):Bool	{		return get(key) != null;	}	public function create(width:Int, height:Int, color:FlxColor, unique = false, ?key:String):FlxGraphic	{		return FlxGraphic.fromRectangle(width, height, color, unique, key);	}	public function add(graphic:FlxGraphicAsset, unique = false, ?key:String):FlxGraphic	{		if ((graphic is FlxGraphic))		{			return FlxGraphic.fromGraphic(cast graphic, unique, key);		}		else if ((graphic is BitmapData))		{			return FlxGraphic.fromBitmapData(cast graphic, unique, key);		}		return FlxGraphic.fromAssetKey(Std.string(graphic), unique, key);	}	public inline function addGraphic(graphic:FlxGraphic):FlxGraphic	{		_cache.set(graphic.key, graphic);		// Mantener reverse lookup sincronizado		if (graphic.bitmap != null)		{			_reverseCache.set(graphic.bitmap, graphic.key);		}		return graphic;	}	public inline function get(key:String):FlxGraphic	{		return _cache.get(key);	}	/**	 * REVERSE LOOKUP O(1): Busca el key de un BitmapData en el cache.	 * Antes: O(n) recorriendo todo el cache.	 * Ahora: O(1) usando Map invertido.	 */	public function findKeyForBitmap(bmd:BitmapData):String	{		if (bmd == null) return null;		return _reverseCache.get(bmd);	}	public inline function getKeyForClass(source:Class<Dynamic>):String	{		return Type.getClassName(source);	}	public function generateKey(systemKey:String, userKey:String, unique = false):String	{		var key:String = userKey;		if (key == null)			key = systemKey;		if (unique || key == null)			key = getUniqueKey(key);		return key;	}	public function getUniqueKey(?baseKey:String):String	{		if (baseKey == null)			baseKey = "pixels";		if (!checkCache(baseKey))			return baseKey;		var i:Int = _lastUniqueKeyIndex;		var uniqueKey:String;		do		{			i++;			uniqueKey = baseKey + i;		}		while (checkCache(uniqueKey));		_lastUniqueKeyIndex = i;		return uniqueKey;	}	public function getKeyWithSpacesAndBorders(baseKey:String, ?frameSize:FlxPoint, ?frameSpacing:FlxPoint, ?frameBorder:FlxPoint,			?region:FlxRect):String	{		var result:String = baseKey;		if (region != null)			result += "_Region:" + region.x + "_" + region.y + "_" + region.width + "_" + region.height;		if (frameSize != null)			result += "_FrameSize:" + frameSize.x + "_" + frameSize.y;		if (frameSpacing != null)			result += "_Spaces:" + frameSpacing.x + "_" + frameSpacing.y;		if (frameBorder != null)			result += "_Border:" + frameBorder.x + "_" + frameBorder.y;		return result;	}	public function remove(graphic:FlxGraphic):Void	{		if (graphic != null)		{			// Remover del reverse cache			if (graphic.bitmap != null)			{				_reverseCache.remove(graphic.bitmap);			}			removeKey(graphic.key);			if (!graphic.isDestroyed)				graphic.destroy();		}	}	public function removeByKey(key:String):Void	{		if (key != null)		{			var obj = get(key);			// Remover del reverse cache antes de eliminar			if (obj != null && obj.bitmap != null)			{				_reverseCache.remove(obj.bitmap);			}			removeKey(key);			if (obj != null)				obj.destroy();		}	}	public function removeIfNoUse(graphic:FlxGraphic):Void	{		if (graphic != null && graphic.useCount == 0 && !graphic.persist)			remove(graphic);	}	public function clearCache():Void	{		if (_cache == null)		{			_cache = new Map();			_reverseCache = new Map();			return;		}		for (key in _cache.keys())		{			var obj = get(key);			if (obj != null && !obj.persist && obj.useCount <= 0)			{				// Remover del reverse cache				if (obj.bitmap != null)				{					_reverseCache.remove(obj.bitmap);				}				removeKey(key);				obj.destroy();			}		}	}	inline function removeKey(key:String):Void	{		if (key != null)		{			Assets.cache.removeBitmapData(key);			var obj = _cache.get(key);			if (obj != null && obj.bitmap != null)			{				_reverseCache.remove(obj.bitmap);			}			_cache.remove(key);		}	}	public function reset():Void	{		if (_cache == null)		{			_cache = new Map();			_reverseCache = new Map();			return;		}		for (key in _cache.keys())		{			var obj = get(key);			removeKey(key);			if (obj != null)				obj.destroy();		}		_reverseCache = new Map();	}	public function clearUnused():Void	{		for (key in _cache.keys())		{			var obj = _cache.get(key);			if (obj != null && obj.useCount <= 0 && !obj.persist && obj.destroyOnNoUse)			{				removeByKey(key);			}		}	}	#if FLX_OPENGL_AVAILABLE	static var _maxTextureSize = -1;	function get_maxTextureSize():Int	{		if (_maxTextureSize < 0)			_maxTextureSize = FlxG.renderTile ? cast GL.getParameter(GL.MAX_TEXTURE_SIZE) : 0;		return _maxTextureSize;	}	#end	function get_whitePixel():FlxFrame	{		if (_whitePixel == null)		{			var bd = new BitmapData(10, 10, true, FlxColor.WHITE);			var graphic:FlxGraphic = FlxG.bitmap.add(bd, true, "whitePixels");			graphic.persist = true;			_whitePixel = graphic.imageFrame.frame;		}		return _whitePixel;	}}
+﻿package flixel.system.frontEnds;
+
+import flixel.graphics.FlxGraphic;
+import flixel.graphics.frames.FlxFrame;
+import flixel.math.FlxPoint;
+import flixel.math.FlxRect;
+import flixel.system.FlxAssets;
+import flixel.util.FlxColor;
+import openfl.Assets;
+import openfl.display.BitmapData;
+#if FLX_OPENGL_AVAILABLE
+import lime.graphics.opengl.GL;
+#end
+
+/**
+ * BitmapFrontEnd con Reverse Lookup O(1) para Dark's Collection.
+ * Sobreescribe el BitmapFrontEnd estandar de Flixel.
+ *
+ * findKeyForBitmap() pasa de O(n) a O(1) usando un Map invertido.
+ */
+class BitmapFrontEnd
+{
+	#if FLX_OPENGL_AVAILABLE
+	public var maxTextureSize(get, never):Int;
+	#end
+
+	public var whitePixel(get, never):FlxFrame;
+
+	@:allow(flixel.system.frontEnds.BitmapLogFrontEnd)
+	var _cache:Map<String, FlxGraphic>;
+
+	// REVERSE LOOKUP: BitmapData -> key, para busqueda O(1)
+	var _reverseCache:Map<BitmapData, String>;
+
+	var _whitePixel:FlxFrame;
+	var _lastUniqueKeyIndex:Int = 0;
+
+	public function new()
+	{
+		reset();
+	}
+
+	public function onAssetsReload(_):Void
+	{
+		for (key in _cache.keys())
+		{
+			var obj = _cache.get(key);
+			if (obj != null && obj.canBeRefreshed)
+			{
+				obj.onAssetsReload();
+			}
+		}
+	}
+
+	public inline function checkCache(key:String):Bool
+	{
+		return get(key) != null;
+	}
+
+	public function create(width:Int, height:Int, color:FlxColor, unique = false, ?key:String):FlxGraphic
+	{
+		return FlxGraphic.fromRectangle(width, height, color, unique, key);
+	}
+
+	public function add(graphic:FlxGraphicAsset, unique = false, ?key:String):FlxGraphic
+	{
+		if ((graphic is FlxGraphic))
+		{
+			return FlxGraphic.fromGraphic(cast graphic, unique, key);
+		}
+		else if ((graphic is BitmapData))
+		{
+			return FlxGraphic.fromBitmapData(cast graphic, unique, key);
+		}
+
+		return FlxGraphic.fromAssetKey(Std.string(graphic), unique, key);
+	}
+
+	public inline function addGraphic(graphic:FlxGraphic):FlxGraphic
+	{
+		_cache.set(graphic.key, graphic);
+		// Mantener reverse lookup sincronizado
+		if (graphic.bitmap != null)
+		{
+			_reverseCache.set(graphic.bitmap, graphic.key);
+		}
+		return graphic;
+	}
+
+	public inline function get(key:String):FlxGraphic
+	{
+		return _cache.get(key);
+	}
+
+	/**
+	 * REVERSE LOOKUP O(1): Busca el key de un BitmapData en el cache.
+	 * Antes: O(n) recorriendo todo el cache.
+	 * Ahora: O(1) usando Map invertido.
+	 */
+	public function findKeyForBitmap(bmd:BitmapData):String
+	{
+		if (bmd == null) return null;
+		return _reverseCache.get(bmd);
+	}
+
+	public inline function getKeyForClass(source:Class<Dynamic>):String
+	{
+		return Type.getClassName(source);
+	}
+
+	public function generateKey(systemKey:String, userKey:String, unique = false):String
+	{
+		var key:String = userKey;
+		if (key == null)
+			key = systemKey;
+
+		if (unique || key == null)
+			key = getUniqueKey(key);
+
+		return key;
+	}
+
+	public function getUniqueKey(?baseKey:String):String
+	{
+		if (baseKey == null)
+			baseKey = "pixels";
+
+		if (!checkCache(baseKey))
+			return baseKey;
+
+		var i:Int = _lastUniqueKeyIndex;
+		var uniqueKey:String;
+		do
+		{
+			i++;
+			uniqueKey = baseKey + i;
+		}
+		while (checkCache(uniqueKey));
+
+		_lastUniqueKeyIndex = i;
+		return uniqueKey;
+	}
+
+	public function getKeyWithSpacesAndBorders(baseKey:String, ?frameSize:FlxPoint, ?frameSpacing:FlxPoint, ?frameBorder:FlxPoint,
+			?region:FlxRect):String
+	{
+		var result:String = baseKey;
+
+		if (region != null)
+			result += "_Region:" + region.x + "_" + region.y + "_" + region.width + "_" + region.height;
+
+		if (frameSize != null)
+			result += "_FrameSize:" + frameSize.x + "_" + frameSize.y;
+
+		if (frameSpacing != null)
+			result += "_Spaces:" + frameSpacing.x + "_" + frameSpacing.y;
+
+		if (frameBorder != null)
+			result += "_Border:" + frameBorder.x + "_" + frameBorder.y;
+
+		return result;
+	}
+
+	public function remove(graphic:FlxGraphic):Void
+	{
+		if (graphic != null)
+		{
+			// Remover del reverse cache
+			if (graphic.bitmap != null)
+			{
+				_reverseCache.remove(graphic.bitmap);
+			}
+			removeKey(graphic.key);
+			if (!graphic.isDestroyed)
+				graphic.destroy();
+		}
+	}
+
+	public function removeByKey(key:String):Void
+	{
+		if (key != null)
+		{
+			var obj = get(key);
+			// Remover del reverse cache antes de eliminar
+			if (obj != null && obj.bitmap != null)
+			{
+				_reverseCache.remove(obj.bitmap);
+			}
+			removeKey(key);
+			if (obj != null)
+				obj.destroy();
+		}
+	}
+
+	public function removeIfNoUse(graphic:FlxGraphic):Void
+	{
+		if (graphic != null && graphic.useCount == 0 && !graphic.persist)
+			remove(graphic);
+	}
+
+	public function clearCache():Void
+	{
+		if (_cache == null)
+		{
+			_cache = new Map();
+			_reverseCache = new Map();
+			return;
+		}
+
+		for (key in _cache.keys())
+		{
+			var obj = get(key);
+			if (obj != null && !obj.persist && obj.useCount <= 0)
+			{
+				// Remover del reverse cache
+				if (obj.bitmap != null)
+				{
+					_reverseCache.remove(obj.bitmap);
+				}
+				removeKey(key);
+				obj.destroy();
+			}
+		}
+	}
+
+	inline function removeKey(key:String):Void
+	{
+		if (key != null)
+		{
+			Assets.cache.removeBitmapData(key);
+			var obj = _cache.get(key);
+			if (obj != null && obj.bitmap != null)
+			{
+				_reverseCache.remove(obj.bitmap);
+			}
+			_cache.remove(key);
+		}
+	}
+
+	public function reset():Void
+	{
+		if (_cache == null)
+		{
+			_cache = new Map();
+			_reverseCache = new Map();
+			return;
+		}
+
+		for (key in _cache.keys())
+		{
+			var obj = get(key);
+			removeKey(key);
+			if (obj != null)
+				obj.destroy();
+		}
+
+		_reverseCache = new Map();
+	}
+
+	public function clearUnused():Void
+	{
+		for (key in _cache.keys())
+		{
+			var obj = _cache.get(key);
+			if (obj != null && obj.useCount <= 0 && !obj.persist && obj.destroyOnNoUse)
+			{
+				removeByKey(key);
+			}
+		}
+	}
+
+	#if FLX_OPENGL_AVAILABLE
+	static var _maxTextureSize = -1;
+
+	function get_maxTextureSize():Int
+	{
+		if (_maxTextureSize < 0)
+			_maxTextureSize = FlxG.renderTile ? cast GL.getParameter(GL.MAX_TEXTURE_SIZE) : 0;
+
+		return _maxTextureSize;
+	}
+	#end
+
+	function get_whitePixel():FlxFrame
+	{
+		if (_whitePixel == null)
+		{
+			var bd = new BitmapData(10, 10, true, FlxColor.WHITE);
+			var graphic:FlxGraphic = FlxG.bitmap.add(bd, true, "whitePixels");
+			graphic.persist = true;
+			_whitePixel = graphic.imageFrame.frame;
+		}
+
+		return _whitePixel;
+	}
+}
