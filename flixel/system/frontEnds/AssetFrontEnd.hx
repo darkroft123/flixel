@@ -1,4 +1,4 @@
-﻿package flixel.system.frontEnds;
+package flixel.system.frontEnds;
 
 import flixel.FlxG;
 import flixel.system.FlxAssets;
@@ -90,7 +90,6 @@ class AssetFrontEnd
 	#else
 	public final defaultSoundExtension:String = '.${haxe.macro.Compiler.getDefine("FLX_DEFAULT_SOUND_EXT")}';
 	#end
-	public final soundExtensions:Array<String> = ["mp3", "ogg", "wav", "flac", "opus"];
 	
 	/**
 	 * Used by methods like `getAsset`, `getBitmapData`, `getText`, their "unsafe" counterparts and
@@ -120,10 +119,7 @@ class AssetFrontEnd
 				sys.io.File.getContent(getPath(id));
 			case BINARY:
 				sys.io.File.getBytes(getPath(id));
-			case MUSIC:
-				final buffer = lime.media.AudioBuffer.fromFile(getPath(id), true);
-				Sound.fromAudioBuffer(buffer);
-
+			
 			// Check cache
 			case IMAGE if (canUseCache && Assets.cache.hasBitmapData(id)):
 				Assets.cache.getBitmapData(id);
@@ -163,7 +159,6 @@ class AssetFrontEnd
 			case BINARY: Assets.getBytes(id);
 			case IMAGE: Assets.getBitmapData(id, useCache);
 			case SOUND: Assets.getSound(id, useCache);
-			case MUSIC: Assets.getMusic(id, useCache);
 			case FONT: Assets.getFont(id, useCache);
 		}
 	}
@@ -229,7 +224,6 @@ class AssetFrontEnd
 			case BINARY: Assets.loadBytes(id);
 			case IMAGE: Assets.loadBitmapData(id, useCache);
 			case SOUND: Assets.loadSound(id, useCache);
-			case MUSIC: Assets.loadSound(id, useCache);
 			case FONT: Assets.loadFont(id, useCache);
 		}
 	}
@@ -243,9 +237,6 @@ class AssetFrontEnd
 	 */
 	public dynamic function exists(id:String, ?type:FlxAssetType)
 	{
-		if (type == MUSIC)
-			type = SOUND;
-
 		#if FLX_DEFAULT_SOUND_EXT
 		// add file extension
 		if (type == SOUND)
@@ -274,9 +265,6 @@ class AssetFrontEnd
 	 */
 	public dynamic function isLocal(id:String, ?type:FlxAssetType, useCache = true)
 	{
-		if (type == MUSIC)
-			type = SOUND;
-
 		#if FLX_DEFAULT_SOUND_EXT
 		// add file extension
 		if (type == SOUND)
@@ -303,9 +291,6 @@ class AssetFrontEnd
 	 */
 	public dynamic function list(?type:FlxAssetType)
 	{
-		if (type == MUSIC)
-			type = SOUND;
-
 		#if FLX_STANDARD_ASSETS_DIRECTORY
 		return Assets.list(type.toOpenFlType());
 		#else
@@ -334,7 +319,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  A new BitmapData object
 	 */
-	public function getBitmapDataUnsafe(id:String, useCache = false):BitmapData
+	public inline function getBitmapDataUnsafe(id:String, useCache = false):BitmapData
 	{
 		return cast getAssetUnsafe(id, IMAGE, useCache);
 	}
@@ -346,7 +331,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  A new BitmapData object
 	 */
-	public function getBitmapData(id:String, useCache = false, ?logStyle:LogStyle):BitmapData
+	public inline function getBitmapData(id:String, useCache = false, ?logStyle:LogStyle):BitmapData
 	{
 		return cast getAsset(id, IMAGE, useCache, logStyle);
 	}
@@ -358,15 +343,8 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  A new `Sound` object Note: Dos not return a `FlxSound`
 	 */
-	public function getSoundUnsafe(id:String, useCache = true):Sound
+	public inline function getSoundUnsafe(id:String, useCache = true):Sound
 	{
-		var path = new Path(id), s:String;
-		for (ext in soundExtensions)
-		{
-			path.ext = ext;
-			s = path.toString();
-			if (exists(s, SOUND)) return cast getAssetUnsafe(s, SOUND, useCache);
-		}
 		return cast getAssetUnsafe(addSoundExtIf(id), SOUND, useCache);
 	}
 	
@@ -380,15 +358,8 @@ class AssetFrontEnd
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 * @return  A new `Sound` object Note: Dos not return a `FlxSound`
 	 */
-	public function getSound(id:String, useCache = true, ?logStyle:LogStyle):Sound
+	public inline function getSound(id:String, useCache = true, ?logStyle:LogStyle):Sound
 	{
-		var path = new Path(id), s:String;
-		for (ext in soundExtensions)
-		{
-			path.ext = ext;
-			s = path.toString();
-			if (exists(s, SOUND)) return cast getAsset(s, SOUND, useCache, logStyle);
-		}
 		return cast getAsset(addSoundExtIf(id), SOUND, useCache, logStyle);
 	}
 	
@@ -400,7 +371,7 @@ class AssetFrontEnd
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 * @return  A new `Sound` object Note: Dos not return a `FlxSound`
 	 */
-	public function getSoundAddExt(id:String, useCache = true, ?logStyle:LogStyle):Sound
+	public inline function getSoundAddExt(id:String, useCache = true, ?logStyle:LogStyle):Sound
 	{
 		return getSound(addSoundExt(id), useCache, logStyle);
 	}
@@ -416,131 +387,12 @@ class AssetFrontEnd
 	
 	inline function addSoundExt(id:String)
 	{
-		final needsExt = Path.extension(id).length == 0;
-		if (needsExt)
+		if (!id.endsWith(".mp3") && !id.endsWith(".ogg") && !id.endsWith(".wav"))
 			return id + defaultSoundExtension;
 			
 		return id;
 	}
-
-	/**
-	 * Gets an instance of a streamed sound. Unlike its "safe" counterpart, there is no log on missing assets.
-	 * Can be set to a custom function to avoid the existing asset system.
-	 *
-	 * Streamed sounds load and unload chunks of audio data during playback, keeping memory usage low.
-	 * The usage of streamed sounds is only recommended for larger audio tracks, such as music.
-	 * 
-	 * **Note**: Due to a backend limitation, streamed sounds currently only work on native targets and OGG/Vorbis files.
-	 * ...Not anymore :) with FunkinCrew's Lime.
-	 * 
-	 * Trying to stream an unsupported file format will fall back to regular sound loading behavior.
-	 * 
-	 * @param   id        The ID or asset path for the sound
-	 * @return  A new `Sound` object Note: Does not return a `FlxSound`
-	 * @since   6.2.0
-	 */
-	public dynamic function streamSoundUnsafe(id:String, useCache = true):Sound
-	{
-		var path = new Path(id), s:String;
-		for (ext in soundExtensions)
-		{
-			path.ext = ext;
-			s = path.toString();
-			if (exists(s, SOUND)) return cast getAssetUnsafe(s, MUSIC, useCache);
-		}
-		return cast getAssetUnsafe(addSoundExtIf(id), MUSIC, useCache);
-	}
-
-	/**
-	 * Gets an instance of a streamed sound, logs when the asset is not found.
-	 * 
-	 * Streamed sounds load and unload chunks of audio data during playback, keeping memory usage low.
-	 * The usage of streamed sounds is only recommended for larger audio tracks, such as music.
-	 * 
-	 * **Note**: Due to a backend limitation, streamed sounds currently only work on native targets and OGG/Vorbis files.
-	 * ...Not anymore :) with FunkinCrew's Lime.
-	 * 
-	 * Trying to stream an unsupported file format will fall back to regular sound loading behavior.
-	 * 
-	 * **Note:** If the `FLX_DEFAULT_SOUND_EXT` flag is enabled, you may omit the file extension
-	 * 
-	 * @param   id        The ID or asset path for the sound
-	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
-	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
-	 * @return  A new `Sound` object Note: Does not return a `FlxSound`
-	 * @since   6.2.0
-	 */
-	public function streamSound(id:String, useCache = true, ?logStyle:LogStyle):Sound
-	{
-		var path = new Path(id), s:String;
-		for (ext in soundExtensions)
-		{
-			path.ext = ext;
-			s = path.toString();
-			if (exists(s, SOUND)) return cast getAsset(s, MUSIC, useCache, logStyle);
-		}
-		return cast getAsset(addSoundExtIf(id), MUSIC, useCache, logStyle);
-	}
-
-	/**
-	 * Gets an instance of a streamed sound, logs when the asset is not found.
-	 * 
-	 * Streamed sounds load and unload chunks of audio data during playback, keeping memory usage low.
-	 * The usage of streamed sounds is only recommended for larger audio tracks, such as music.
-	 * 
-	 * **Note**: Due to a backend limitation, streamed sounds currently only work on native targets and OGG/Vorbis files.
-	 * ...Not anymore :) with FunkinCrew's Lime.
-	 * 
-	 * Trying to stream an unsupported file format will fall back to regular sound loading behavior.
-	 * 
-	 * @param   id        The ID or asset path for the sound
-	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
-	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
-	 * @return  A new `Sound` object Note: Does not return a `FlxSound`
-	 * @since   6.2.0
-	 */
-	public function streamSoundAddExt(id:String, ?logStyle:LogStyle):Sound
-	{
-		return streamSound(addSoundExt(id));
-	}
-
-	/**
-	 * Checks whether the sound asset with the specified ID can be streamed.
-	 * 
-	 * **Note**: Due to a backend limitation, streamed sounds currently only work on native targets and OGG/Vorbis files.
-	 * ...Not anymore :) with FunkinCrew's Lime.
-	 * 
-	 * **Note:** If the `FLX_DEFAULT_SOUND_EXT` flag is enabled, you may omit the file extension
-	 * 
-	 * @param   file   The ID or asset path for the asset
-	 * @return  Returns whether the sound can be streamed or not.
-	 * @since   6.2.0
-	 */
-	public function canStreamSound(id:String):Bool
-	{
-		#if (lime_funkin && lime_native)
-		final decoder = lime.media.AudioDecoder.fromFile(Assets.getPath(addSoundExtIf(id)));
-		if (decoder != null)
-		{
-			var seekable = decoder.seekable();
-			decoder.dispose();
-
-			return seekable;
-		}
-		#elseif lime_vorbis
-		// Check if file is really OGG/Vorbis
-		final vorbis = lime.media.vorbis.VorbisFile.fromFile(Assets.getPath(addSoundExtIf(id)));
-		if (vorbis != null)
-		{
-			vorbis.clear();
-
-			return true;
-		}
-		#end
-
-		return false;
-	}
-
+	
 	/**
 	 * Gets the contents of a text-based asset. Unlike its "safe" counterpart, there is no log
 	 * on missing assets
@@ -550,7 +402,7 @@ class AssetFrontEnd
 	 * @param   id        The ID or asset path for the asset
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 */
-	public function getTextUnsafe(id:String, useCache = true):String
+	public inline function getTextUnsafe(id:String, useCache = true):String
 	{
 		return cast getAssetUnsafe(id, TEXT, useCache);
 	}
@@ -564,7 +416,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 */
-	public function getText(id:String, useCache = true, ?logStyle:LogStyle):String
+	public inline function getText(id:String, useCache = true, ?logStyle:LogStyle):String
 	{
 		return cast getAsset(id, TEXT, useCache, logStyle);
 	}
@@ -578,7 +430,7 @@ class AssetFrontEnd
 	 * @param   id        The ID or asset path for the asset
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 */
-	public function getXmlUnsafe(id:String, useCache = true)
+	public inline function getXmlUnsafe(id:String, useCache = true)
 	{
 		final text = getTextUnsafe(id, useCache);
 		return text != null ? parseXml(text) : null;
@@ -593,7 +445,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 */
-	public function getXml(id:String, useCache = true, ?logStyle:LogStyle)
+	public inline function getXml(id:String, useCache = true, ?logStyle:LogStyle)
 	{
 		final text = getText(id, useCache, logStyle);
 		return text != null ? parseXml(text) : null;
@@ -608,7 +460,7 @@ class AssetFrontEnd
 	 * @param   id        The ID or asset path for the asset
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 */
-	public function getJsonUnsafe(id:String, useCache = true)
+	public inline function getJsonUnsafe(id:String, useCache = true)
 	{
 		final text = getTextUnsafe(id, useCache);
 		return text != null ? parseJson(text) : null;
@@ -623,7 +475,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 */
-	public function getJson(id:String, useCache = true, ?logStyle:LogStyle)
+	public inline function getJson(id:String, useCache = true, ?logStyle:LogStyle)
 	{
 		final text = getText(id, useCache, logStyle);
 		return text != null ? parseJson(text) : null;
@@ -638,7 +490,7 @@ class AssetFrontEnd
 	 * @param   id        The ID or asset path for the asset
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 */
-	public function getBytesUnsafe(id:String, useCache = true):Bytes
+	public inline function getBytesUnsafe(id:String, useCache = true):Bytes
 	{
 		return cast getAssetUnsafe(id, BINARY, useCache);
 	}
@@ -652,7 +504,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 */
-	public function getBytes(id:String, useCache = true, ?logStyle:LogStyle):Bytes
+	public inline function getBytes(id:String, useCache = true, ?logStyle:LogStyle):Bytes
 	{
 		return cast getAsset(id, BINARY, useCache);
 	}
@@ -664,7 +516,7 @@ class AssetFrontEnd
 	 * @param   id        The ID or asset path for the asset
 	 * @param   useCache  Whether to allow use of the asset cache
 	 */
-	public function getFontUnsafe(id:String, useCache = true):Font
+	public inline function getFontUnsafe(id:String, useCache = true):Font
 	{
 		return cast getAssetUnsafe(id, FONT, useCache);
 	}
@@ -676,7 +528,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @param   logStyle  How to log, if the asset is not found. Uses `LogStyle.ERROR` by default
 	 */
-	public function getFont(id:String, useCache = true, ?logStyle:LogStyle):Font
+	public inline function getFont(id:String, useCache = true, ?logStyle:LogStyle):Font
 	{
 		return cast getAsset(id, FONT, useCache, logStyle);
 	}
@@ -688,7 +540,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadBitmapData(id:String, useCache = false):Future<BitmapData>
+	public inline function loadBitmapData(id:String, useCache = false):Future<BitmapData>
 	{
 		return cast loadAsset(id, IMAGE, useCache);
 	}
@@ -700,7 +552,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadSound(id:String, useCache = true):Future<Sound>
+	public inline function loadSound(id:String, useCache = true):Future<Sound>
 	{
 		return cast loadAsset(id, SOUND, useCache);
 	}
@@ -714,7 +566,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadText(id:String, useCache = true):Future<String>
+	public inline function loadText(id:String, useCache = true):Future<String>
 	{
 		return cast loadAsset(id, TEXT, useCache);
 	}
@@ -728,7 +580,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadXml(id:String, useCache = true):Future<Xml>
+	public inline function loadXml(id:String, useCache = true):Future<Xml>
 	{
 		return wrapFuture(loadText(id, useCache), parseXml);
 	}
@@ -742,7 +594,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadJson(id:String, useCache = true):Future<Dynamic>
+	public inline function loadJson(id:String, useCache = true):Future<Dynamic>
 	{
 		return wrapFuture(loadText(id, useCache), parseJson);
 	}
@@ -756,7 +608,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadBytes(id:String, useCache = true):Future<Bytes>
+	public inline function loadBytes(id:String, useCache = true):Future<Bytes>
 	{
 		return cast loadAsset(id, BINARY, useCache);
 	}
@@ -768,7 +620,7 @@ class AssetFrontEnd
 	 * @param   useCache  Whether to allow use of the asset cache (if one exists)
 	 * @return  Returns a `Future` which allows listeners to be added via methods like `onComplete`
 	 */
-	public function loadFont(id:String, useCache = true):Future<Font>
+	public inline function loadFont(id:String, useCache = true):Future<Font>
 	{
 		return cast loadAsset(id, FONT, useCache);
 	}
@@ -776,7 +628,7 @@ class AssetFrontEnd
 	/**
 	 * Parses a json string, creates and returns a struct
 	 */
-	public function parseJson(jsonText:String)
+	public inline function parseJson(jsonText:String)
 	{
 		return Json.parse(jsonText);
 	}
@@ -784,7 +636,7 @@ class AssetFrontEnd
 	/**
 	 * Parses an xml string, creates and returns an `Xml` object
 	 */
-	public function parseXml(xmlText:String)
+	public inline function parseXml(xmlText:String)
 	{
 		return Xml.parse(xmlText);
 	}
@@ -819,9 +671,6 @@ enum abstract FlxAssetType(String)
 	
 	/** Audio assets, such as *.ogg or *.wav files */
 	var SOUND = "sound";
-
-	/** Music assets, streamable sounds */
-	var MUSIC = "music";
 	
 	/** Text assets */
 	var TEXT = "text";
@@ -834,7 +683,6 @@ enum abstract FlxAssetType(String)
 			case FONT: AssetType.FONT;
 			case IMAGE: AssetType.IMAGE;
 			case SOUND: AssetType.SOUND;
-			case MUSIC: AssetType.MUSIC;
 			case TEXT: AssetType.TEXT;
 		}
 	}
