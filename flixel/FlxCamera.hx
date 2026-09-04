@@ -9,6 +9,7 @@ import openfl.geom.ColorTransform;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import flixel.graphics.FlxGraphic;
+import flixel.math.FlxAngle;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.tile.FlxDrawBaseItem;
 import flixel.graphics.tile.FlxDrawTrianglesItem;
@@ -25,9 +26,9 @@ import openfl.Vector;
 import openfl.display.BlendMode;
 import openfl.filters.BitmapFilter;
 
-using flixel.util.FlxColorTransformUtil;
+	using flixel.util.FlxColorTransformUtil;
 
-private typedef FlxDrawItem = flixel.graphics.tile.FlxDrawQuadsItem;
+	private typedef FlxDrawItem = flixel.graphics.tile.FlxDrawQuadsItem;
 
 /**
  * The camera class is used to display the game's visuals.
@@ -44,6 +45,22 @@ private typedef FlxDrawItem = flixel.graphics.tile.FlxDrawQuadsItem;
  */
 class FlxCamera extends FlxBasic
 {
+	/**
+	 * Verifica si un blend mode puede ser batcheado sin romper el draw call.
+	 * Los blend modes "complejos" (DARKEN, DIFFERENCE, etc.) rompen el batch
+	 * en hardware que no soporta coherent blends.
+	 */
+	static function isCoherentBlendMode(blend:BlendMode):Bool
+	{
+		return switch (blend)
+		{
+			case DARKEN, DIFFERENCE, HARDLIGHT, OVERLAY:
+				false;
+			default:
+				true;
+		}
+	}
+
 	/**
 	 * Any `FlxCamera` with a zoom of 0 (the default value) will have this zoom value.
 	 */
@@ -338,6 +355,9 @@ class FlxCamera extends FlxBasic
 	 * The angle of the camera display (in degrees).
 	 */
 	public var angle(default, set):Float = 0;
+	public var rotateSprite:Bool = false;
+	@:noCompletion var _sinAngle:Float = 0;
+	@:noCompletion var _cosAngle:Float = 1;
 
 	/**
 	 * The color tint of the camera display.
@@ -581,13 +601,14 @@ class FlxCamera extends FlxBasic
 		var itemToReturn = null;
 		var blendInt:Int = FlxDrawBaseItem.blendToInt(blend);
 
+		if (blend == null) blend = NORMAL;
+
 		if (_currentDrawItem != null
 			&& _currentDrawItem.type == FlxDrawItemType.TILES
 			&& _headTiles.graphics == graphic
 			&& _headTiles.colored == colored
 			&& _headTiles.hasColorOffsets == hasColorOffsets
-			&& _headTiles.blending == blendInt
-			&& _headTiles.blend == blend
+			&& (_headTiles.blend == blend && isCoherentBlendMode(blend))
 			&& _headTiles.antialiasing == smooth
 			&& _headTiles.shader == shader)
 		{
@@ -642,12 +663,14 @@ class FlxCamera extends FlxBasic
 	{
 		var blendInt:Int = FlxDrawBaseItem.blendToInt(blend);
 
+		if (blend == null) blend = NORMAL;
+
 		if (_currentDrawItem != null
 			&& _currentDrawItem.type == FlxDrawItemType.TRIANGLES
 			&& _headTriangles.graphics == graphic
 			&& _headTriangles.antialiasing == smoothing
 			&& _headTriangles.colored == isColored
-			&& _headTriangles.blending == blendInt
+			&& (_headTriangles.blending == blendInt && isCoherentBlendMode(blend))
 			&& _headTriangles.blend == blend
 			#if !flash
 			&& _headTriangles.hasColorOffsets == hasColorOffsets
@@ -771,11 +794,18 @@ class FlxCamera extends FlxBasic
 		}
 		else
 		{
+			if (!rotateSprite && angle != 0)
+			{
+				matrix.translate(-width / 2, -height / 2);
+				matrix.rotateWithTrig(_cosAngle, _sinAngle);
+				matrix.translate(width / 2, height / 2);
+			}
+
 			var isColored = (transform != null && transform.hasRGBMultipliers());
 			var hasColorOffsets:Bool = (transform != null && transform.hasRGBAOffsets());
 
 			#if FLX_RENDER_TRIANGLE
-			var drawItem:FlxDrawTrianglesItem = startTrianglesBatch(frame.parent, smoothing, isColored, blend);
+			var drawItem:FlxDrawTrianglesItem = startTrianglesBatch(frame.parent, smoothing, isColored, blend, hasColorOffsets, shader);
 			#else
 			var drawItem = startQuadBatch(frame.parent, isColored, hasColorOffsets, blend, smoothing, shader);
 			#end
@@ -814,6 +844,13 @@ class FlxCamera extends FlxBasic
 		{
 			_helperMatrix.identity();
 			_helperMatrix.translate(destPoint.x + frame.offset.x, destPoint.y + frame.offset.y);
+
+			if (!rotateSprite && angle != 0)
+			{
+				_helperMatrix.translate(-width / 2, -height / 2);
+				_helperMatrix.rotateWithTrig(_cosAngle, _sinAngle);
+				_helperMatrix.translate(width / 2, height / 2);
+			}
 
 			var isColored = (transform != null && transform.hasRGBMultipliers());
 			var hasColorOffsets:Bool = (transform != null && transform.hasRGBAOffsets());
@@ -1126,6 +1163,10 @@ class FlxCamera extends FlxBasic
 	/**
 	 * Updates the camera scroll as well as special effects like screen-shake or fades.
 	 */
+	@:noCompletion var __lastFiltersEnabled:Null<Bool> = null;
+	@:noCompletion var __lastFilters:Array<BitmapFilter> = null;
+	@:noCompletion var __lastFiltersLength:Int = -1;
+
 	override public function update(elapsed:Float):Void
 	{
 		// follow the target, if there is one
@@ -1139,7 +1180,19 @@ class FlxCamera extends FlxBasic
 		updateFlash(elapsed);
 		updateFade(elapsed);
 
-		flashSprite.filters = filtersEnabled ? filters : null;
+		// Only push filter changes down to OpenFL when something actually changed.
+		// Assigning every frame made OpenFL clone every BitmapFilter, allocate
+		// new arrays and mark the whole render tree dirty 60+ times per second,
+		// invalidating its filtered-render caches constantly.
+		var currentLength:Int = filters != null ? filters.length : 0;
+		if (__lastFiltersEnabled != filtersEnabled
+			|| (filtersEnabled && (filters != __lastFilters || currentLength != __lastFiltersLength)))
+		{
+			flashSprite.filters = filtersEnabled ? filters : null;
+			__lastFilters = filtersEnabled ? filters : null;
+			__lastFiltersEnabled = filtersEnabled;
+			__lastFiltersLength = currentLength;
+		}
 
 		updateFlashSpritePosition();
 		updateShake(elapsed);
@@ -1965,7 +2018,10 @@ class FlxCamera extends FlxBasic
 	function set_angle(Angle:Float):Float
 	{
 		angle = Angle;
-		flashSprite.rotation = Angle;
+		flashSprite.rotation = rotateSprite ? Angle : 0;
+		var radians:Float = angle * FlxAngle.TO_RAD;
+		_sinAngle = Math.sin(radians);
+		_cosAngle = Math.cos(radians);
 		return Angle;
 	}
 
