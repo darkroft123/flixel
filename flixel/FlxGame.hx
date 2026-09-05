@@ -370,7 +370,9 @@ class FlxGame extends Sprite
 
 		_lostFocus = false;
 		FlxG.signals.focusGained.dispatch();
-		_state.onFocus();
+
+		if (_state != null)
+			_state.onFocus();
 
 		if (!FlxG.autoPause)
 			return;
@@ -400,7 +402,9 @@ class FlxGame extends Sprite
 
 		_lostFocus = true;
 		FlxG.signals.focusLost.dispatch();
-		_state.onFocusLost();
+
+		if (_state != null)
+			_state.onFocusLost();
 
 		if (!FlxG.autoPause)
 			return;
@@ -434,7 +438,8 @@ class FlxGame extends Sprite
 	{
 		FlxG.resizeGame(width, height);
 
-		_state.onResize(width, height);
+		if (_state != null)
+			_state.onResize(width, height);
 
 		FlxG.cameras.resize();
 		FlxG.signals.gameResized.dispatch(width, height);
@@ -549,6 +554,13 @@ class FlxGame extends Sprite
 		FlxG.signals.postGameReset.dispatch();
 	}
 
+	function getNextState():FlxState
+	{
+		final state:FlxState = _nextState.createInstance();
+		state._constructor = _nextState.getConstructor();
+		return state;
+	}
+
 	/**
 	 * If there is a state change requested during the update loop,
 	 * this function handles actual destroying the old state and related processes,
@@ -574,11 +586,11 @@ class FlxGame extends Sprite
 			_state.destroy();
 
 		// we need to clear bitmap cache only after previous state is destroyed, which will reset useCount for FlxGraphic objects
-		FlxG.bitmap.clearCache();
+		if (FlxG.bitmap.autoClearCache)
+			FlxG.bitmap.clearCache();
 
 		// Finally assign and create the new state
-		_state = _nextState.createInstance();
-		_state._constructor = _nextState.getConstructor();
+		_state = getNextState();
 		_nextState = null;
 
 		if (_gameJustStarted)
@@ -587,6 +599,8 @@ class FlxGame extends Sprite
 		FlxG.signals.preStateCreate.dispatch(_state);
 
 		_state.create();
+
+		_state.createPost();
 
 		if (_gameJustStarted)
 			gameStart();
@@ -669,9 +683,6 @@ class FlxGame extends Sprite
 	 */
 	function update():Void
 	{
-		if (!_state.active || !_state.exists)
-			return;
-
 		if (_nextState != null)
 			switchState();
 
@@ -682,9 +693,9 @@ class FlxGame extends Sprite
 
 		updateElapsed();
 
-		FlxG.signals.preUpdate.dispatch();
-
 		updateInput();
+
+		FlxG.signals.preUpdate.dispatch();
 
 		#if FLX_SOUND_SYSTEM
 		FlxG.sound.update(FlxG.elapsed);
