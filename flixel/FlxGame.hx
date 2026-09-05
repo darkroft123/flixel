@@ -586,8 +586,7 @@ class FlxGame extends Sprite
 			_state.destroy();
 
 		// we need to clear bitmap cache only after previous state is destroyed, which will reset useCount for FlxGraphic objects
-		if (FlxG.bitmap.autoClearCache)
-			FlxG.bitmap.clearCache();
+		FlxG.bitmap.clearCache();
 
 		// Finally assign and create the new state
 		_state = getNextState();
@@ -599,8 +598,6 @@ class FlxGame extends Sprite
 		FlxG.signals.preStateCreate.dispatch(_state);
 
 		_state.create();
-
-		_state.createPost();
 
 		if (_gameJustStarted)
 			gameStart();
