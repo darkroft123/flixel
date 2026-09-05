@@ -1,6 +1,5 @@
 package flixel;
 
-import lime.system.System;
 import flixel.graphics.tile.FlxDrawBaseItem;
 import flixel.system.FlxSplash;
 import flixel.util.FlxArrayUtil;
@@ -75,7 +74,7 @@ class FlxGame extends Sprite
 	/**
 	 * Time in milliseconds that has passed (amount of "ticks" passed) since the game has started.
 	 */
-	public var ticks(default, null):Float = 0;
+	public var ticks(default, null):Int = 0;
 
 	/**
 	 * Enables or disables the filters set via `setFilters()`.
@@ -101,13 +100,13 @@ class FlxGame extends Sprite
 	/**
 	 * Total number of milliseconds elapsed since game start.
 	 */
-	var _total:Float = 0;
+	var _total:Int = 0;
 
 	/**
 	 * Time stamp of game startup. Needed on JS where `Lib.getTimer()`
 	 * returns time stamp of current date, not the time passed since app start.
 	 */
-	var _startTime:Float = 0;
+	var _startTime:Int = 0;
 
 	/**
 	 * Total number of milliseconds elapsed since last update loop.
@@ -370,9 +369,7 @@ class FlxGame extends Sprite
 
 		_lostFocus = false;
 		FlxG.signals.focusGained.dispatch();
-
-		if (_state != null)
-			_state.onFocus();
+		_state.onFocus();
 
 		if (!FlxG.autoPause)
 			return;
@@ -402,9 +399,7 @@ class FlxGame extends Sprite
 
 		_lostFocus = true;
 		FlxG.signals.focusLost.dispatch();
-
-		if (_state != null)
-			_state.onFocusLost();
+		_state.onFocusLost();
 
 		if (!FlxG.autoPause)
 			return;
@@ -438,8 +433,7 @@ class FlxGame extends Sprite
 	{
 		FlxG.resizeGame(width, height);
 
-		if (_state != null)
-			_state.onResize(width, height);
+		_state.onResize(width, height);
 
 		FlxG.cameras.resize();
 		FlxG.signals.gameResized.dispatch(width, height);
@@ -554,13 +548,6 @@ class FlxGame extends Sprite
 		FlxG.signals.postGameReset.dispatch();
 	}
 
-	function getNextState():FlxState
-	{
-		final state:FlxState = _nextState.createInstance();
-		state._constructor = _nextState.getConstructor();
-		return state;
-	}
-
 	/**
 	 * If there is a state change requested during the update loop,
 	 * this function handles actual destroying the old state and related processes,
@@ -589,7 +576,8 @@ class FlxGame extends Sprite
 		FlxG.bitmap.clearCache();
 
 		// Finally assign and create the new state
-		_state = getNextState();
+		_state = _nextState.createInstance();
+		_state._constructor = _nextState.getConstructor();
 		_nextState = null;
 
 		if (_gameJustStarted)
@@ -680,6 +668,9 @@ class FlxGame extends Sprite
 	 */
 	function update():Void
 	{
+		if (!_state.active || !_state.exists)
+			return;
+
 		if (_nextState != null)
 			switchState();
 
@@ -690,9 +681,9 @@ class FlxGame extends Sprite
 
 		updateElapsed();
 
-		updateInput();
-
 		FlxG.signals.preUpdate.dispatch();
+
+		updateInput();
 
 		#if FLX_SOUND_SYSTEM
 		FlxG.sound.update(FlxG.elapsed);
@@ -851,10 +842,10 @@ class FlxGame extends Sprite
 		return getTimer() - _startTime;
 	}
 
-	dynamic function getTimer():Float
+	dynamic function getTimer():Int
 	{
 		// expensive, only call if necessary
-		return System.getTimerPrecise();
+		return Lib.getTimer();
 	}
 }
 
