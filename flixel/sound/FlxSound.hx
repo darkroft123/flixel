@@ -418,7 +418,7 @@ class FlxSound extends FlxBasic {
 			if (Assets.exists(embeddedSound, AssetType.MUSIC) && this == FlxG.sound.music)
 				_sound = Assets.getMusic(embeddedSound);
 			else if (Assets.exists(embeddedSound, AssetType.SOUND))
-				_sound = system.OptimizedAssets.getSound(embeddedSound);
+				_sound = Assets.getSound(embeddedSound);
 			else
 				FlxG.log.error('Could not find a Sound asset with an ID of \'$embeddedSound\'.');
 		}
@@ -813,7 +813,7 @@ class FlxSound extends FlxBasic {
 		return _volume;
 
 	inline function set_volume(v:Float):Float {
-		_volume = FlxMath.bound(v, 0, 10);
+		_volume = FlxMath.bound(v, 0, 1);
 		updateTransform();
 		return _volume;
 	}
@@ -908,7 +908,7 @@ class FlxSound extends FlxBasic {
 			return _time;
 	}
 	function get_time():Float {
-		if (_channel == null || @:privateAccess !_channel.__isValid || /*AudioManager.context == null*/Main.audioDisconnected) return _time;
+		if (_channel == null || @:privateAccess !_channel.__isValid) return _time;
 
 		final sourceTime = _source.currentTime - _source.offset - _offset;
 		if (!_source.playing || _realPitch <= 0) {
