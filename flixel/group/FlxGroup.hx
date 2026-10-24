@@ -126,7 +126,6 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 		super();
 
 		members = [];
-		_drawQueue = [];
 
 		maxSize = Std.int(Math.abs(MaxSize));
 		flixelType = GROUP;
@@ -157,13 +156,14 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 			var count = length;
 			while (count-- > 0)
 			{
-				final basic = members.shift();
+				final basic = members.pop();
 				if (basic != null)
 					basic.destroy();
 			}
 			
 			members = null;
 		}
+		_drawQueue = null;
 	}
 
 	/**
@@ -190,25 +190,59 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 		{
 			FlxCamera._defaultCameras = _cameras;
 		}
-		if(zIndexesAllowed)
+		if (zIndexesAllowed)
 		{
-			if(_drawQueue.length != 0)
-				_drawQueue.resize(0);
-	
-			var basic:FlxBasic = null;
+			var hasMultipleZ:Bool = false;
+			var firstZ:Int = 0;
+			var firstFound:Bool = false;
 			for (i in 0...members.length)
 			{
-				basic = members[i];
+				final basic = members[i];
 				if (basic != null && basic.exists && basic.visible)
-					_drawQueue.push(i);
+				{
+					if (!firstFound)
+					{
+						firstZ = basic.zIndex;
+						firstFound = true;
+					}
+					else if (basic.zIndex != firstZ)
+					{
+						hasMultipleZ = true;
+						break;
+					}
+				}
 			}
-			_drawQueue.sort(_drawQueueSort);
-			
-			for(i in 0..._drawQueue.length)
+
+			if (hasMultipleZ)
 			{
-				basic = members[_drawQueue[i]];
-				if (basic != null && basic.exists && basic.visible)
-					basic.draw();
+				if (_drawQueue == null)
+					_drawQueue = [];
+				else if (_drawQueue.length != 0)
+					_drawQueue.resize(0);
+		
+				var basic:FlxBasic = null;
+				for (i in 0...members.length)
+				{
+					basic = members[i];
+					if (basic != null && basic.exists && basic.visible)
+						_drawQueue.push(i);
+				}
+				_drawQueue.sort(_drawQueueSort);
+				
+				for (i in 0..._drawQueue.length)
+				{
+					basic = members[_drawQueue[i]];
+					if (basic != null && basic.exists && basic.visible)
+						basic.draw();
+				}
+			}
+			else
+			{
+				for (basic in members)
+				{
+					if (basic != null && basic.exists && basic.visible)
+						basic.draw();
+				}
 			}
 		}
 		else

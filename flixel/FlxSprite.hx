@@ -331,6 +331,9 @@ class FlxSprite extends FlxObject
 	@:noCompletion
 	var _flashRect2:Rectangle;
 
+	@:noCompletion
+	static final _sharedFlashPointZero:Point = new Point();
+
 	/**
 	 * Internal, reused frequently during drawing and animating. Always contains `(0,0)`.
 	 */
@@ -377,7 +380,7 @@ class FlxSprite extends FlxObject
 	 * Maps `FlxDirectionFlags` values to axis flips
 	 */
 	@:noCompletion
-	var _facingFlip:Map<FlxDirectionFlags, {x:Bool, y:Bool}> = new Map<FlxDirectionFlags, {x:Bool, y:Bool}>();
+	var _facingFlip:Map<FlxDirectionFlags, {x:Bool, y:Bool}>;
 
 	/**
 	 * Creates a `FlxSprite` at a specified position with a specified one-frame graphic.
@@ -407,7 +410,7 @@ class FlxSprite extends FlxObject
 		_flashPoint = new Point();
 		_flashRect = new Rectangle();
 		_flashRect2 = new Rectangle();
-		_flashPointZero = new Point();
+		_flashPointZero = _sharedFlashPointZero;
 		offset = FlxPoint.get();
 		frameOffset = FlxPoint.get();
 		origin = FlxPoint.get();
@@ -415,8 +418,8 @@ class FlxSprite extends FlxObject
 		_halfSize = FlxPoint.get();
 		_matrix = new FlxMatrix();
 		colorTransform = new ColorTransform();
-		_scaledOrigin = new FlxPoint();
-		_scaledFrameOffset = new FlxPoint();
+		_scaledOrigin = FlxPoint.get();
+		_scaledFrameOffset = FlxPoint.get();
 	}
 
 	/**
@@ -460,6 +463,7 @@ class FlxSprite extends FlxObject
 		_frameGraphic = FlxDestroyUtil.destroy(_frameGraphic);
 
 		@:bypassAccessor clipRect = FlxDestroyUtil.put(clipRect);
+		_facingFlip = null;
 		shader = null;
 	}
 
@@ -934,16 +938,22 @@ class FlxSprite extends FlxObject
 		frame.prepareMatrix(matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
 		matrix.translate(-origin.x, -origin.y);
 
-		var _animOffset:FlxPoint = animation.curAnim?.offset ?? FlxPoint.weak();
+		var animOffsetX:Float = 0;
+		var animOffsetY:Float = 0;
+		if (animation != null && animation.curAnim != null && animation.curAnim.offset != null)
+		{
+			animOffsetX = animation.curAnim.offset.x;
+			animOffsetY = animation.curAnim.offset.y;
+		}
 		if (frameOffsetAngle != null && frameOffsetAngle != angle)
 		{
 			var angleOff = (-angle + frameOffsetAngle) * FlxAngle.TO_RAD;
 			matrix.rotate(-angleOff);
-			matrix.translate(-(frameOffset.x + _animOffset.x), -(frameOffset.y + _animOffset.y));
+			matrix.translate(-(frameOffset.x + animOffsetX), -(frameOffset.y + animOffsetY));
 			matrix.rotate(angleOff);
 		}
 		else
-			matrix.translate(-(frameOffset.x + _animOffset.x), -(frameOffset.y + _animOffset.y));
+			matrix.translate(-(frameOffset.x + animOffsetX), -(frameOffset.y + animOffsetY));
 
 		matrix.scale(scale.x, scale.y);
 		
@@ -966,7 +976,6 @@ class FlxSprite extends FlxObject
 		}
 
 		camera.drawPixels(frame, framePixels, matrix, colorTransform, blend, antialiasing, shader);
-		_animOffset.putWeak();
 	}
 
 	/**
@@ -1437,14 +1446,22 @@ class FlxSprite extends FlxObject
 		if (camera == null)
 			camera = getDefaultCamera();
 		
-		var _animOffset:FlxPoint = animation.curAnim?.offset ?? FlxPoint.weak();
+		var animOffsetX:Float = 0;
+		var animOffsetY:Float = 0;
+		if (animation != null && animation.curAnim != null && animation.curAnim.offset != null)
+		{
+			animOffsetX = animation.curAnim.offset.x;
+			animOffsetY = animation.curAnim.offset.y;
+		}
 		newRect.setPosition(x, y);
 		
 		if (pixelPerfectPosition)
 			newRect.floor();
 
-		_scaledOrigin.set(origin.x * Math.abs(scale.x), origin.y * Math.abs(scale.y));
-		_scaledFrameOffset.set((frameOffset.x + _animOffset.x) * Math.abs(scale.x), (frameOffset.y + _animOffset.y) * Math.abs(scale.y));
+		final absScaleX:Float = Math.abs(scale.x);
+		final absScaleY:Float = Math.abs(scale.y);
+		_scaledOrigin.set(origin.x * absScaleX, origin.y * absScaleY);
+		_scaledFrameOffset.set((frameOffset.x + animOffsetX) * absScaleX, (frameOffset.y + animOffsetY) * absScaleY);
 
 		newRect.x += -(camera.scroll.x * scrollFactor.x) - offset.x + origin.x - _scaledOrigin.x;
 		newRect.y += -(camera.scroll.y * scrollFactor.y) - offset.y + origin.y - _scaledOrigin.y;
@@ -1452,7 +1469,7 @@ class FlxSprite extends FlxObject
 		if (isPixelPerfectRender(camera))
 			newRect.floor();
 
-		newRect.setSize((frameWidth * Math.abs(scale.x)) - (frameOffset.x + _animOffset.x), (frameHeight * Math.abs(scale.y)) - (frameOffset.y + _animOffset.y));
+		newRect.setSize((frameWidth * absScaleX) - (frameOffset.x + animOffsetX), (frameHeight * absScaleY) - (frameOffset.y + animOffsetY));
 		return newRect.getRotatedBounds(angle, _scaledOrigin, newRect, _scaledFrameOffset);
 	}
 		
@@ -1468,6 +1485,8 @@ class FlxSprite extends FlxObject
 	 */
 	public inline function setFacingFlip(Direction:FlxDirectionFlags, FlipX:Bool, FlipY:Bool):Void
 	{
+		if (_facingFlip == null)
+			_facingFlip = new Map<FlxDirectionFlags, {x:Bool, y:Bool}>();
 		_facingFlip.set(Direction, {x: FlipX, y: FlipY});
 	}
 
@@ -1573,11 +1592,14 @@ class FlxSprite extends FlxObject
 	@:noCompletion
 	function set_facing(Direction:FlxDirectionFlags):FlxDirectionFlags
 	{
-		var flip = _facingFlip.get(Direction);
-		if (flip != null)
+		if (_facingFlip != null)
 		{
-			flipX = flip.x;
-			flipY = flip.y;
+			var flip = _facingFlip.get(Direction);
+			if (flip != null)
+			{
+				flipX = flip.x;
+				flipY = flip.y;
+			}
 		}
 
 		return facing = Direction;

@@ -74,7 +74,8 @@ class FlxAnimationController implements IFlxDestroyable
 	 * @param   frameIndex   The current animation's frameIndex in the tile sheet
 	 * @since 5.9.0
 	 */
-	public final onFrameChange = new FlxTypedSignal<(animName:String, frameNumber:Int, frameIndex:Int)->Void>();
+	public var onFrameChange(get, never):FlxTypedSignal<(animName:String, frameNumber:Int, frameIndex:Int)->Void>;
+	var _onFrameChange:FlxTypedSignal<(animName:String, frameNumber:Int, frameIndex:Int)->Void>;
 	
 	/**
 	 * Dispatches each time the current animation finishes.
@@ -82,7 +83,8 @@ class FlxAnimationController implements IFlxDestroyable
 	 * @param   animName  The name of the current animation
 	 * @since 5.9.0
 	 */
-	public final onFinish = new FlxTypedSignal<(animName:String)->Void>();
+	public var onFinish(get, never):FlxTypedSignal<(animName:String)->Void>;
+	var _onFinish:FlxTypedSignal<(animName:String)->Void>;
 	
 	/**
 	 * Dispatches each time the current animation's loop is complete.
@@ -91,7 +93,8 @@ class FlxAnimationController implements IFlxDestroyable
 	 * @param   animName  The name of the current animation
 	 * @since 5.9.0
 	 */
-	public final onLoop = new FlxTypedSignal<(animName:String)->Void>();
+	public var onLoop(get, never):FlxTypedSignal<(animName:String)->Void>;
+	var _onLoop:FlxTypedSignal<(animName:String)->Void>;
 	
 	/**
 	 * How fast or slow time should pass for this animation controller
@@ -175,9 +178,12 @@ class FlxAnimationController implements IFlxDestroyable
 	@:haxe.warning("-WDeprecated")
 	public function destroy():Void
 	{
-		FlxDestroyUtil.destroy(onFrameChange);
-		FlxDestroyUtil.destroy(onFinish);
-		FlxDestroyUtil.destroy(onLoop);
+		FlxDestroyUtil.destroy(_onFrameChange);
+		FlxDestroyUtil.destroy(_onFinish);
+		FlxDestroyUtil.destroy(_onLoop);
+		_onFrameChange = null;
+		_onFinish = null;
+		_onLoop = null;
 
 		destroyAnimations();
 		_animations = null;
@@ -214,9 +220,13 @@ class FlxAnimationController implements IFlxDestroyable
 					anim.destroy();
 				}
 			}
+			_animations.clear();
+		}
+		else
+		{
+			_animations = new Map<String, FlxAnimation>();
 		}
 
-		_animations = new Map<String, FlxAnimation>();
 		_curAnim = null;
 	}
 
@@ -725,14 +735,19 @@ class FlxAnimationController implements IFlxDestroyable
 	@:haxe.warning("-WDeprecated")
 	function fireCallback():Void
 	{
-		final name = (_curAnim != null) ? (_curAnim.name) : null;
-		final number = (_curAnim != null) ? (_curAnim.curFrame) : frameIndex;
-		if (callback != null)
+		if (callback != null || _onFrameChange != null)
 		{
-			callback(name, number, frameIndex);
+			final name = (_curAnim != null) ? (_curAnim.name) : null;
+			final number = (_curAnim != null) ? (_curAnim.curFrame) : frameIndex;
+			if (callback != null)
+			{
+				callback(name, number, frameIndex);
+			}
+			if (_onFrameChange != null)
+			{
+				_onFrameChange.dispatch(name, number, frameIndex);
+			}
 		}
-		
-		onFrameChange.dispatch(name, number, frameIndex);
 	}
 
 	@:allow(flixel.animation)
@@ -743,14 +758,40 @@ class FlxAnimationController implements IFlxDestroyable
 		{
 			finishCallback(name);
 		}
-		
-		onFinish.dispatch(name);
+		if (_onFinish != null)
+		{
+			_onFinish.dispatch(name);
+		}
 	}
 
 	@:allow(flixel.animation)
 	function fireLoopCallback(?name:String):Void
 	{
-		onLoop.dispatch(name);
+		if (_onLoop != null)
+		{
+			_onLoop.dispatch(name);
+		}
+	}
+
+	function get_onFrameChange():FlxTypedSignal<(animName:String, frameNumber:Int, frameIndex:Int)->Void>
+	{
+		if (_onFrameChange == null)
+			_onFrameChange = new FlxTypedSignal<(animName:String, frameNumber:Int, frameIndex:Int)->Void>();
+		return _onFrameChange;
+	}
+
+	function get_onFinish():FlxTypedSignal<(animName:String)->Void>
+	{
+		if (_onFinish == null)
+			_onFinish = new FlxTypedSignal<(animName:String)->Void>();
+		return _onFinish;
+	}
+
+	function get_onLoop():FlxTypedSignal<(animName:String)->Void>
+	{
+		if (_onLoop == null)
+			_onLoop = new FlxTypedSignal<(animName:String)->Void>();
+		return _onLoop;
 	}
 
 	function byNamesHelper(addTo:Array<Int>, frameNames:Array<String>):Void
@@ -824,16 +865,26 @@ class FlxAnimationController implements IFlxDestroyable
 	
 	function removeInvalidFrames(frames:Array<FlxFrame>)
 	{
+		#if FLX_DEBUG
 		final invalid:Array<FlxFrame> = [];
+		#end
 		var i = frames.length;
 		while (i-- > 0)
 		{
 			final frame = frames[i];
 			if (frame.parent.shader == null)
-				invalid.unshift(frames.splice(i, 1)[0]);
+			{
+				final removed = frames.splice(i, 1)[0];
+				#if FLX_DEBUG
+				invalid.unshift(removed);
+				#end
+			}
 		}
-		
+		#if FLX_DEBUG
 		return invalid;
+		#else
+		return null;
+		#end
 	}
 
 	function set_frameIndex(Frame:Int):Int

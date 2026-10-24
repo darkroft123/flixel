@@ -294,11 +294,15 @@ class FlxAtlasFrames extends FlxFramesCollection
 
                 frame.name = name;
                 frame.offset.copyFrom(offset);
+                rect.put();
+                offset.put();
+                sourceSize.put();
                 
                 continue;
             }
 
 			frames.addAtlasFrame(rect, sourceSize, offset, name, angle, flipX, flipY);
+			size.put();
 		}
 
 		return frames;

@@ -113,11 +113,11 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 		indicesPosition = 0;
 		colorsPosition = 0;
 		#if !flash
-		alphas.splice(0, alphas.length);
+		alphas.resize(0);
 		if (colorMultipliers != null)
-			colorMultipliers.splice(0, colorMultipliers.length);
+			colorMultipliers.resize(0);
 		if (colorOffsets != null)
-			colorOffsets.splice(0, colorOffsets.length);
+			colorOffsets.resize(0);
 		#end
 	}
 
@@ -181,7 +181,7 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 		var indicesLength:Int = indices.length;
 		if (!cameraBounds.overlaps(bounds))
 		{
-			this.vertices.splice(this.vertices.length - verticesLength, verticesLength);
+			this.vertices.length -= verticesLength;
 		}
 		else
 		{
@@ -299,7 +299,7 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 		var prevColorsPos:Int = colorsPosition;
 		var prevNumberOfVertices:Int = numVertices;
 
-		var point = FlxPoint.get();
+		point.set(0, 0);
 		point.transform(matrix);
 
 		vertices[prevVerticesPos] = point.x;
@@ -331,8 +331,6 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 
 		vertices[prevVerticesPos + 6] = point.x;
 		vertices[prevVerticesPos + 7] = point.y;
-
-		point.put();
 
 		uvtData[prevVerticesPos + 6] = frame.uv.left;
 		uvtData[prevVerticesPos + 7] = frame.uv.bottom;
