@@ -253,27 +253,12 @@ class FlxText extends FlxSprite
 	 */
 	override public function destroy():Void
 	{
-		if (textField != null)
-		{
-			@:privateAccess
-			if (textField.__graphics != null)
-			{
-				if (textField.__graphics.__bitmap != null)
-				{
-					textField.__graphics.__bitmap.dispose();
-					textField.__graphics.__bitmap = null;
-				}
-				textField.__graphics.__cairo = null;
-			}
-		}
 		textField = null;
 		_font = null;
 		_defaultFormat = null;
 		_formatAdjusted = null;
 		_shadowOffset = FlxDestroyUtil.put(_shadowOffset);
 		_graphicOffset = FlxDestroyUtil.put(_graphicOffset);
-		_borderPixels = FlxDestroyUtil.dispose(_borderPixels);
-		_borderColorTransform = null;
 		super.destroy();
 	}
 
@@ -710,14 +695,10 @@ class FlxText extends FlxSprite
 				if(fontName != null && fontName.length != 0 && Assets.exists(Font, FONT))
 					newFontName = fontName;
 			}
-			if (_defaultFormat.font == newFontName)
-				return _font;
 			_defaultFormat.font = newFontName;
 		}
 		else
 		{
-			if (_defaultFormat.font == FlxAssets.FONT_DEFAULT)
-				return _font;
 			_defaultFormat.font = FlxAssets.FONT_DEFAULT;
 		}
 
@@ -943,10 +924,7 @@ class FlxText extends FlxSprite
 			#end
 			
 			if (_hasBorderAlpha)
-			{
-				_borderPixels = FlxDestroyUtil.dispose(_borderPixels);
 				_borderPixels = graphic.bitmap.clone();
-			}
 
 			if (_autoHeight)
 				textField.height = newHeight;

@@ -32,10 +32,6 @@ class BitmapFrontEnd
 	// REVERSE LOOKUP: BitmapData -> key, para busqueda O(1)
 	var _reverseCache:Map<BitmapData, String>;
 
-	#if target.threaded
-	var _mutex:sys.thread.Mutex = new sys.thread.Mutex();
-	#end
-
 	var _whitePixel:FlxFrame;
 	var _lastUniqueKeyIndex:Int = 0;
 
@@ -82,31 +78,18 @@ class BitmapFrontEnd
 
 	public inline function addGraphic(graphic:FlxGraphic):FlxGraphic
 	{
-		#if target.threaded
-		_mutex.acquire();
-		#end
 		_cache.set(graphic.key, graphic);
 		// Mantener reverse lookup sincronizado
 		if (graphic.bitmap != null)
 		{
 			_reverseCache.set(graphic.bitmap, graphic.key);
 		}
-		#if target.threaded
-		_mutex.release();
-		#end
 		return graphic;
 	}
 
 	public inline function get(key:String):FlxGraphic
 	{
-		#if target.threaded
-		_mutex.acquire();
-		var res = _cache.get(key);
-		_mutex.release();
-		return res;
-		#else
 		return _cache.get(key);
-		#end
 	}
 
 	/**
@@ -117,14 +100,7 @@ class BitmapFrontEnd
 	public function findKeyForBitmap(bmd:BitmapData):String
 	{
 		if (bmd == null) return null;
-		#if target.threaded
-		_mutex.acquire();
-		var res = _reverseCache.get(bmd);
-		_mutex.release();
-		return res;
-		#else
 		return _reverseCache.get(bmd);
-		#end
 	}
 
 	public inline function getKeyForClass(source:Class<Dynamic>):String
@@ -252,18 +228,12 @@ class BitmapFrontEnd
 		if (key != null)
 		{
 			Assets.cache.removeBitmapData(key);
-			#if target.threaded
-			_mutex.acquire();
-			#end
 			var obj = _cache.get(key);
 			if (obj != null && obj.bitmap != null)
 			{
 				_reverseCache.remove(obj.bitmap);
 			}
 			_cache.remove(key);
-			#if target.threaded
-			_mutex.release();
-			#end
 		}
 	}
 

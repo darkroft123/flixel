@@ -126,6 +126,7 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 		super();
 
 		members = [];
+		_drawQueue = [];
 
 		maxSize = Std.int(Math.abs(MaxSize));
 		flixelType = GROUP;
@@ -156,14 +157,13 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 			var count = length;
 			while (count-- > 0)
 			{
-				final basic = members.pop();
+				final basic = members.shift();
 				if (basic != null)
 					basic.destroy();
 			}
 			
 			members = null;
 		}
-		_drawQueue = null;
 	}
 
 	/**
@@ -190,59 +190,25 @@ class FlxTypedGroup<T:FlxBasic> extends FlxBasic
 		{
 			FlxCamera._defaultCameras = _cameras;
 		}
-		if (zIndexesAllowed)
+		if(zIndexesAllowed)
 		{
-			var hasMultipleZ:Bool = false;
-			var firstZ:Int = 0;
-			var firstFound:Bool = false;
+			if(_drawQueue.length != 0)
+				_drawQueue.resize(0);
+	
+			var basic:FlxBasic = null;
 			for (i in 0...members.length)
 			{
-				final basic = members[i];
+				basic = members[i];
 				if (basic != null && basic.exists && basic.visible)
-				{
-					if (!firstFound)
-					{
-						firstZ = basic.zIndex;
-						firstFound = true;
-					}
-					else if (basic.zIndex != firstZ)
-					{
-						hasMultipleZ = true;
-						break;
-					}
-				}
+					_drawQueue.push(i);
 			}
-
-			if (hasMultipleZ)
+			_drawQueue.sort(_drawQueueSort);
+			
+			for(i in 0..._drawQueue.length)
 			{
-				if (_drawQueue == null)
-					_drawQueue = [];
-				else if (_drawQueue.length != 0)
-					_drawQueue.resize(0);
-		
-				var basic:FlxBasic = null;
-				for (i in 0...members.length)
-				{
-					basic = members[i];
-					if (basic != null && basic.exists && basic.visible)
-						_drawQueue.push(i);
-				}
-				_drawQueue.sort(_drawQueueSort);
-				
-				for (i in 0..._drawQueue.length)
-				{
-					basic = members[_drawQueue[i]];
-					if (basic != null && basic.exists && basic.visible)
-						basic.draw();
-				}
-			}
-			else
-			{
-				for (basic in members)
-				{
-					if (basic != null && basic.exists && basic.visible)
-						basic.draw();
-				}
+				basic = members[_drawQueue[i]];
+				if (basic != null && basic.exists && basic.visible)
+					basic.draw();
 			}
 		}
 		else
