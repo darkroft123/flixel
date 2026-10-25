@@ -58,11 +58,10 @@ class FlxSoundGroup
 	 */
 	public function remove(sound:FlxSound):Bool
 	{
-		if (sounds.contains(sound))
+		if (sounds.remove(sound))
 		{
 			@:bypassAccessor
 			sound.group = null;
-			sounds.remove(sound);
 			sound.updateTransform();
 			return true;
 		}
