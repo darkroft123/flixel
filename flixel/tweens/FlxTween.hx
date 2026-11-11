@@ -1452,7 +1452,7 @@ class FlxTweenManager extends FlxBasic
 	function forEachTweensOf(object:Dynamic, ?fieldPaths:Array<String>, func:FlxTween->Void)
 	{
 		if (object == null)
-			throw "Cannot cancel tween variables of an object that is null.";
+			return;
 		
 		if (fieldPaths == null || fieldPaths.length == 0)
 		{

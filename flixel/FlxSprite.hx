@@ -1615,7 +1615,8 @@ class FlxSprite extends FlxObject
 		if (newAngle)
 		{
 			_angleChanged = true;
-			animation.update(0);
+			if (animation != null)
+				animation.update(0);
 		}
 		return ret;
 	}
