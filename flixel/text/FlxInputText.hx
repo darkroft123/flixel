@@ -572,6 +572,8 @@ class FlxInputText extends FlxText implements IFlxInputText
 		var beginIndex = selectionBeginIndex;
 		var endIndex = selectionEndIndex;
 		
+		if (textField == null || text == null)
+			return;
 		if (beginIndex == endIndex && maxChars > 0 && text.length == maxChars)
 			return;
 			

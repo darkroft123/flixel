@@ -114,6 +114,12 @@ class FlxInputTextManager extends FlxBasic
 	 */
 	public function unregisterInputText(input:IFlxInputText):Void
 	{
+		if (focus == input)
+		{
+			focus = null;
+			if (FlxG.stage != null && FlxG.stage.window != null)
+				FlxG.stage.window.textInputEnabled = false;
+		}
 		if (_registeredInputTexts.contains(input))
 		{
 			_registeredInputTexts.remove(input);

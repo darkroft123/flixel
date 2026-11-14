@@ -78,8 +78,12 @@ class BitmapFrontEnd
 
 	public inline function addGraphic(graphic:FlxGraphic):FlxGraphic
 	{
+		var existing = _cache.get(graphic.key);
+		if (existing != null && existing != graphic && existing.bitmap != null && existing.bitmap != graphic.bitmap)
+		{
+			_reverseCache.remove(existing.bitmap);
+		}
 		_cache.set(graphic.key, graphic);
-		// Mantener reverse lookup sincronizado
 		if (graphic.bitmap != null)
 		{
 			_reverseCache.set(graphic.bitmap, graphic.key);
@@ -165,7 +169,6 @@ class BitmapFrontEnd
 	{
 		if (graphic != null)
 		{
-			// Remover del reverse cache
 			if (graphic.bitmap != null)
 			{
 				_reverseCache.remove(graphic.bitmap);
@@ -181,13 +184,8 @@ class BitmapFrontEnd
 		if (key != null)
 		{
 			var obj = get(key);
-			// Remover del reverse cache antes de eliminar
-			if (obj != null && obj.bitmap != null)
-			{
-				_reverseCache.remove(obj.bitmap);
-			}
 			removeKey(key);
-			if (obj != null)
+			if (obj != null && !obj.isDestroyed)
 				obj.destroy();
 		}
 	}
@@ -210,15 +208,11 @@ class BitmapFrontEnd
 		for (key in _cache.keys())
 		{
 			var obj = get(key);
-			if (obj != null && !obj.persist && obj.useCount <= 0)
+			if (obj != null && !obj.persist && obj.destroyOnNoUse && obj.useCount <= 0)
 			{
-				// Remover del reverse cache
-				if (obj.bitmap != null)
-				{
-					_reverseCache.remove(obj.bitmap);
-				}
 				removeKey(key);
-				obj.destroy();
+				if (!obj.isDestroyed)
+					obj.destroy();
 			}
 		}
 	}
@@ -250,7 +244,7 @@ class BitmapFrontEnd
 		{
 			var obj = get(key);
 			removeKey(key);
-			if (obj != null)
+			if (obj != null && !obj.isDestroyed)
 				obj.destroy();
 		}
 
