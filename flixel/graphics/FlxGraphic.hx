@@ -504,6 +504,11 @@ class FlxGraphic implements IFlxDestroyable
 		{
 			collections = new Array<FlxFramesCollection>();
 			frameCollections.set(type, collections);
+
+			#if EXPERIMENTAL_FLXGRAPHIC_DESTROY_FIX
+			if (!frameCollectionTypes.contains(type))
+				frameCollectionTypes.push(type);
+			#end
 		}
 		return collections;
 	}
